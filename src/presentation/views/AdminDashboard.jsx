@@ -3,7 +3,7 @@ import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
 import { motion } from 'framer-motion';
 import {
-    BarChart3, LayoutDashboard, LogOut, Save, MessageSquare, Plus, Edit2, Trash2, Eye, Info, Mail, CheckCircle2, Github, Globe, Instagram, Share2, AtSign, BookOpen, Users, Upload, Link2
+    BarChart3, LayoutDashboard, LogOut, Save, MessageSquare, Plus, Edit2, Trash2, Eye, Info, Mail, CheckCircle2, Github, Globe, Instagram, Share2, AtSign, BookOpen, Users, Upload, Link2, FileText, Code2
 } from 'lucide-react';
 import { cn } from '../components/CommonUI';
 import { FirestoreRepository } from '../../infrastructure/FirestoreRepository';
@@ -69,7 +69,7 @@ export const AdminDashboard = ({ projects, insights, inquiries, onNavigate }) =>
             liveUrl: '',
             socialLinks: { github: '', instagram: '', tiktok: '', threads: '' }
         };
-        return { ...base, readTime: '5 min' };
+        return { ...base, readTime: '5 min', contentFormat: 'richtext' };
     }, []);
 
     const handleDelete = async (collectionName, id) => {
@@ -140,7 +140,7 @@ export const AdminDashboard = ({ projects, insights, inquiries, onNavigate }) =>
                                 <div key={item.id} className="p-4 bg-slate-900/50 border border-white/5 rounded-xl flex items-center justify-between group">
                                     <div><h4 className="font-bold text-sm">{item.title}</h4><p className="text-[10px] text-slate-500 font-bold uppercase">{Array.isArray(item.category) ? item.category.join(' / ') : item.category}</p></div>
                                     <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <button onClick={() => setEditingItem(item)}><Edit2 size={14} /></button>
+                                        <button onClick={() => setEditingItem({ ...item, contentFormat: item.contentFormat || 'richtext' })}><Edit2 size={14} /></button>
                                         <button onClick={() => handleDelete(activeTab, item.id)}><Trash2 size={14} /></button>
                                     </div>
                                 </div>
@@ -242,17 +242,49 @@ export const AdminDashboard = ({ projects, insights, inquiries, onNavigate }) =>
                                 )}
 
                                 <div className="quill-container">
-                                    <label className="text-[10px] uppercase text-slate-500 mb-1 block font-bold">{activeTab === 'projects' ? 'Detailed Case Study' : 'Rich Text Content'}</label>
+                                    <div className="flex items-center justify-between mb-3">
+                                        <label className="text-[10px] uppercase text-slate-500 font-bold">{activeTab === 'projects' ? 'Detailed Case Study' : 'Rich Text Content'}</label>
+                                        {activeTab === 'insights' && (
+                                            <div className="flex gap-2 p-1 bg-slate-900/50 rounded-lg">
+                                                <button
+                                                    onClick={() => setEditingItem({ ...editingItem, contentFormat: 'richtext' })}
+                                                    className={cn("px-3 py-1 text-[9px] uppercase font-bold rounded transition-all flex items-center gap-1",
+                                                        (editingItem.contentFormat !== 'markdown') ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/50" : "text-slate-500 hover:text-slate-400"
+                                                    )}
+                                                >
+                                                    <FileText size={12} /> Rich Text
+                                                </button>
+                                                <button
+                                                    onClick={() => setEditingItem({ ...editingItem, contentFormat: 'markdown' })}
+                                                    className={cn("px-3 py-1 text-[9px] uppercase font-bold rounded transition-all flex items-center gap-1",
+                                                        editingItem.contentFormat === 'markdown' ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/50" : "text-slate-500 hover:text-slate-400"
+                                                    )}
+                                                >
+                                                    <Code2 size={12} /> Markdown
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+
                                     <div className="bg-slate-950 border border-white/5 rounded-xl overflow-hidden">
-                                        <ReactQuill
-                                            key={editingItem.id || 'new-item'}
-                                            theme="snow"
-                                            value={editingItem.content || editingItem.description || ''}
-                                            onChange={val => setEditingItem(prev => ({ ...prev, content: val }))}
-                                            modules={modules}
-                                            formats={formats}
-                                            placeholder="Write your creative journey here..."
-                                        />
+                                        {activeTab === 'insights' && editingItem.contentFormat === 'markdown' ? (
+                                            <textarea
+                                                value={editingItem.content || ''}
+                                                onChange={e => setEditingItem(prev => ({ ...prev, content: e.target.value }))}
+                                                placeholder="# Heading&#10;## Subheading&#10;&#10;**Bold** and *italic* text&#10;&#10;- Bullet point&#10;1. Numbered list&#10;&#10;[Link](url)&#10;`code`&#10;&#10;Write your content in Markdown..."
+                                                className="w-full h-64 p-4 bg-slate-950 text-slate-100 font-mono text-sm border-0 resize-none focus:outline-none"
+                                            />
+                                        ) : (
+                                            <ReactQuill
+                                                key={editingItem.id || 'new-item'}
+                                                theme="snow"
+                                                value={editingItem.content || editingItem.description || ''}
+                                                onChange={val => setEditingItem(prev => ({ ...prev, content: val }))}
+                                                modules={modules}
+                                                formats={formats}
+                                                placeholder="Write your creative journey here..."
+                                            />
+                                        )}
                                     </div>
                                 </div>
 
