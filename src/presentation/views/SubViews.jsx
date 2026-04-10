@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Search, ChevronRight, ArrowLeft, Filter } from 'lucide-react';
+import { marked } from 'marked';
 import { ProjectCard, InsightItem } from '../components/DataItems';
 import { cn } from '../components/CommonUI';
 import { SEO } from '../components/SEO';
@@ -91,6 +92,6 @@ export const InsightDetailView = ({ post, onNavigate }) => (
                 <img src={post.imageUrl} alt={post.title} className="w-full h-auto object-cover max-h-[400px] md:max-h-[600px] w-full" />
             </div>
         )}
-        <article className="prose prose-invert max-w-none mb-20 font-sans leading-relaxed" dangerouslySetInnerHTML={{ __html: post.content || '<p className="text-slate-500 italic">No content available</p>' }} />
+        <article className="prose prose-invert max-w-none mb-20 font-sans leading-relaxed" dangerouslySetInnerHTML={{ __html: post.contentFormat === 'markdown' ? marked(post.content || '') : (post.content || '<p className="text-slate-500 italic">No content available</p>') }} />
     </motion.div>
 );
