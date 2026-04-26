@@ -12,6 +12,7 @@ import { AdminDashboard } from './presentation/views/AdminDashboard';
 import { AdminAuthView } from './presentation/views/AdminAuthView';
 import { TermsView, PrivacyView } from './presentation/views/LegalViews';
 import { SEO } from './presentation/components/SEO';
+import DevlogView from './presentation/views/DevlogView.jsx';
 
 const MobileMenu = ({ isOpen, onClose, onNavigate, view }) => (
   <AnimatePresence>
@@ -38,6 +39,7 @@ const MobileMenu = ({ isOpen, onClose, onNavigate, view }) => (
             {[
               { label: 'Projects', view: 'projects' },
               { label: 'Insights', view: 'insights' },
+              { label: 'Devlog', view: 'devlog' },
             ].map(item => (
               <button
                 key={item.view}
@@ -121,6 +123,7 @@ const AppContent = () => {
         <nav className="hidden md:flex items-center gap-2">
           <button onClick={() => navigate('projects')} className={cn("font-mono text-[10px] uppercase tracking-[0.2em] px-4 py-2 rounded transition-all duration-300 font-bold", view === 'projects' ? "bg-white text-slate-950 shadow-lg shadow-white/10" : "text-white/60 hover:text-white hover:bg-[#242424]")}>Projects</button>
           <button onClick={() => navigate('insights')} className={cn("font-mono text-[10px] uppercase tracking-[0.2em] px-4 py-2 rounded transition-all duration-300 font-bold", view === 'insights' ? "bg-white text-slate-950 shadow-lg shadow-white/10" : "text-white/60 hover:text-white hover:bg-[#242424]")}>Insights</button>
+          <button onClick={() => navigate('devlog')} className={cn("font-mono text-[10px] uppercase tracking-[0.2em] px-4 py-2 rounded transition-all duration-300 font-bold", view === 'devlog' ? "bg-cyan-500 text-slate-950 shadow-lg shadow-cyan-500/20" : "text-white/60 hover:text-cyan-400 hover:bg-[#242424]")}>Devlog</button>
         </nav>
 
         {/* Mobile Hamburger */}
@@ -145,6 +148,7 @@ const AppContent = () => {
         {view === 'home' && <HomeView key="home" projects={projects} insights={insights} onNavigate={navigate} />}
         {view === 'projects' && <AllProjectsView key="projects" projects={projects} onNavigate={navigate} />}
         {view === 'insights' && <AllInsightsView key="insights" insights={insights} onNavigate={navigate} />}
+        {view === 'devlog' && <DevlogView key="devlog" />}
         {view === 'insight-detail' && <InsightDetailView key="detail" post={selectedPost} onNavigate={navigate} />}
         {view === 'terms' && <TermsView key="terms" onNavigate={navigate} />}
         {view === 'privacy' && <PrivacyView key="privacy" onNavigate={navigate} />}
