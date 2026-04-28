@@ -269,6 +269,18 @@ export default function DevlogView() {
     }
   };
 
+  const handleDeleteProject = async (p) => {
+    if (!isAdmin) return;
+    if (window.confirm(`'${p.name}' 프로젝트를 삭제하시겠습니까?`)) {
+      try {
+        await deleteDoc(doc(db, 'devlog_projects', p.id));
+      } catch (err) {
+        console.error('프로젝트 삭제 실패:', err);
+        alert('삭제에 실패했습니다: ' + err.message);
+      }
+    }
+  };
+
   const addHistoryItem = () => {
     if (!historyAmount) return;
     const newItem = { month: historyMonth, amount: Number(historyAmount) };
@@ -642,9 +654,18 @@ export default function DevlogView() {
                       )}
                     </div>
                     {isAdmin && (
-                      <button onClick={() => handleEditClick(p)} className="text-[#4a6080] hover:text-[#00d4ff] transition-all">
-                        <Edit2 size={13} />
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => handleEditClick(p)} className="text-[#4a6080] hover:text-[#00d4ff] transition-all">
+                          <Edit2 size={13} />
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteProject(p)} 
+                          className="text-[#4a6080] hover:text-[#ff4466] transition-all"
+                          style={{ fontSize: '14px' }}
+                        >
+                          ✕
+                        </button>
+                      </div>
                     )}
                   </div>
                   <div className="font-bold mt-3 mb-2 tracking-tight" style={{ fontSize: '17px', color: COLORS.white }}>{p.name}</div>
