@@ -11,10 +11,14 @@
 **목표:** 기존 nextidealab.app에 `/devlog` 페이지를 추가한다.
 개발 중인 SaaS 프로젝트들의 상태, 빌드 로그, 스택, 수익을 한눈에 보여주는 개인 개발 아카이브 대시보드다.
 
-**원칙:**
-- 제공된 HTML 파일(`devlog_nextidealab.html`)의 레이아웃과 디자인을 1:1로 포팅한다.
-- 기존 코드 구조(Clean Architecture)를 기반으로 하되, UI는 제공된 명세를 우선한다.
-- 디자인 시스템은 기존 nextidealab.app과 제공된 HTML의 조합을 따른다.
+**핵심 원칙:**
+- 기존 코드 구조(Clean Architecture)를 그대로 따른다
+- 새 라이브러리 추가는 최소화한다
+- 디자인은 기존 nextidealab.app의 디자인 시스템을 그대로 적용한다
+
+**공개/비공개 원칙:**
+- 누구나 볼 수 있음 (공개): 프로젝트 카드, 진행률, Next Action, 빌드 로그, 스택 현황
+- Admin 로그인 후에만 보임 (비공개): 수익 트래커, 목표 MRR, 아이디어 보관함, ADD/EDIT 기능
 
 ---
 
@@ -25,13 +29,13 @@
 | Framework | React (Vite) |
 | Language | JavaScript (JSX) |
 | Styling | Tailwind CSS + Inline Styles |
-| Backend | Firebase Firestore (연동 예정) |
+| Backend | Firebase Firestore + Firebase Auth |
 | 배포 | Vercel |
 | 폰트 | Space Mono, Space Grotesk |
 
 ---
 
-## 2. 디자인 시스템 (devlog_nextidealab.html 기준)
+## 2. 디자인 시스템 (절대 변경하지 말 것)
 
 ```css
 /* 컬러 팔레트 */
@@ -53,38 +57,202 @@
 /* 폰트 */
 font-heading: 'Space Grotesk', sans-serif
 font-mono:    'Space Mono', monospace   /* 뱃지, 라벨, 날짜, 태그, 스탯 전용 */
+
+/* 뱃지 패턴 */
+LIVE     → bg: #00d4ff, color: #000
+BUILDING → border: #ffb300, color: #ffb300
+IDEA     → border: #4488ff, color: #4488ff
+PAUSED   → border: #4a6080, color: #4a6080
 ```
 
 ---
 
-## 3. 구현 로그 및 현재 상태
+## 3. Firebase Firestore 스키마
 
-### 2026-04-28: 데이터 동적 연동 및 Admin 기능 구현 (Firestore + Auth)
-- **Firestore 실시간 연동**: `devlog_projects`, `devlog_logs` 컬렉션을 `onSnapshot`으로 연결하여 데이터 변경 시 즉시 반영되도록 구현.
-- **Admin 인증 시스템 도입**:
-  - Firebase Auth(`signInWithEmailAndPassword`)를 통한 관리자 로그인 기능 구현.
-  - `onAuthStateChanged`를 사용하여 실시간 권한 감지 및 UI 제어 (isAdmin 상태).
-  - 우측 상단에 숨겨진 `ADMIN` 트리거 버튼 및 전용 로그인 모달 추가.
-- **Admin 입력 폼 구현**: 권한이 있는 경우에만 프로젝트 및 로그를 추가할 수 있는 모달 시스템 구축.
-  - 프로젝트: 이름, 설명, 상태, 태그, 스택, URL, 수익 필드 지원.
-  - 로그: 프로젝트 선택 및 메시지 입력 지원.
-- **데이터 시딩 스크립트 보완**: `seedDevlog.js`에서 `.env.local` 지원 및 환경 변수 파싱 로직 강화.
-- **UI 로직 고도화**: 
-  - 로딩 및 빈 상태(Empty State) 대응 UI 추가.
-  - 수익(Revenue) 트래커 실시간 합산 로직 적용.
-  - 스택 필터링 기능 강화 (Firestore 데이터 기반 자동 추출).
+### Collection: `devlog_projects`
+
+```js
+{
+  id: string,                    // auto-generated
+  name: string,                  // "AI 광고 카피 생성기"
+  description: string,           // 한 줄 설명
+  status: "live" | "building" | "idea" | "paused",
+  tags: string[],                // ["AI", "WEB"]
+  stack: string[],               // ["Claude API", "Next.js"]
+  deployUrl: string | null,      // 배포 URL
+  githubUrl: string | null,      // GitHub URL (신규)
+  nextAction: string | null,     // "다음 할 것 한 줄" (신규)
+  progress: number,              // 진행률 0~100 (신규)
+  revenue: number,               // 월 수익 (원)
+  revenueHistory: [              // 월별 수익 히스토리 (신규, Admin 전용)
+    { month: string, amount: number }
+  ],
+  targetMRR: number | null,      // 목표 MRR (신규, Admin 전용)
+  startedAt: Timestamp,
+  createdAt: Timestamp,
+  updatedAt: Timestamp
+}
+```
+
+### Collection: `devlog_logs`
+
+```js
+{
+  id: string,
+  projectId: string,
+  projectName: string,
+  message: string,
+  tag: "기능추가" | "버그수정" | "배포" | "기획" | "기타",  // 신규
+  status: "live" | "building" | "idea" | "paused",
+  loggedAt: Timestamp,
+  createdAt: Timestamp
+}
+```
+
+### Collection: `devlog_ideas`  ← 신규 (Admin 전용)
+
+```js
+{
+  id: string,
+  title: string,               // 아이디어 제목
+  description: string,         // 상세 내용
+  potential: "high" | "mid" | "low",  // 가능성
+  tags: string[],
+  createdAt: Timestamp
+}
+```
 
 ---
 
-## 4. 향후 작업 계획 (Step 2-3)
+## 4. 기능 로드맵
 
-### Step 2 — 컴포넌트 모듈화 (진행 예정)
-- `DevlogView.jsx` 내부의 대형 코드를 `src/presentation/components/devlog/` 하위의 독립 컴포넌트로 분리.
+### ✅ 완료
 
-### Step 3 — 삭제 및 수정 기능 추가
-- Admin 모달에 기존 프로젝트/로그 수정 및 삭제 기능 보완.
-- Firestore Security Rules 강화 (Auth 기반 쓰기 권한 제한).
+| 기능 | 공개 여부 |
+|---|---|
+| Firestore 실시간 연동 | - |
+| 프로젝트 카드 그리드 | ✅ 공개 |
+| 빌드 로그 타임라인 | ✅ 공개 |
+| 스택 필터 / 상태 필터 | ✅ 공개 |
+| Admin Firebase Auth 로그인 | - |
+| ADD PROJECT 모달 | 🔒 Admin |
+| ADD LOG 모달 | 🔒 Admin |
+| Vercel 배포 | - |
+| 프로젝트별 Next Action 1줄 | ✅ 공개 |
+| GitHub / 문서 링크 | ✅ 공개 |
+| 진행률 표시 (progress %) | ✅ 공개 |
 
 ---
 
-*Last updated: 2026-04-26 | Architect: Claude (claude.ai) | Builder: Gemini CLI*
+### 🔲 우선순위 1 — 바이브코딩 효율화 (완료)
+
+| 기능 | 공개 여부 | 설명 |
+|---|---|---|
+| 프로젝트별 Next Action 1줄 | ✅ 공개 | 카드 하단에 "→ 다음 할 것" 표시 |
+| GitHub / 문서 링크 | ✅ 공개 | 카드 footer에 링크 아이콘 추가 |
+| 진행률 표시 (progress %) | ✅ 공개 | 카드 상단 상태 컬러 progress bar |
+
+**ADD PROJECT 모달 추가 필드:** nextAction, progress, githubUrl
+
+---
+
+### 🔲 우선순위 2 — 수익화 추적 (다음 작업)
+
+| 기능 | 공개 여부 | 설명 |
+|---|---|---|
+| 월별 수익 히스토리 차트 | 🔒 Admin | 월별 MRR 성장 라인 차트 |
+| 목표 MRR / 달성률 | 🔒 Admin | 프로젝트별 목표 대비 % |
+
+---
+
+### 🔲 우선순위 3 — 로그 & 아이디어 관리
+
+| 기능 | 공개 여부 | 설명 |
+|---|---|---|
+| 빌드 로그 태그 분류 | ✅ 공개 | 기능추가 / 버그수정 / 배포 / 기획 |
+| 아이디어 보관함 | 🔒 Admin | 프로젝트 전 단계 메모 관리 |
+
+---
+
+## 5. 파일 구조
+
+```
+src/
+├── presentation/
+│   └── views/
+│       └── DevlogView.jsx      ← 메인 (모든 로직 통합)
+└── infrastructure/
+    └── FirebaseConfig.js       ← db, auth export
+```
+
+> ⚠️ 현재 모든 로직이 DevlogView.jsx에 통합되어 있음.
+> 추후 컴포넌트 분리는 기능 구현 완료 후 진행.
+
+---
+
+## 6. 하지 말아야 할 것
+
+- ❌ 기존 컴포넌트/파일 무단 수정 (라우터, Header 제외)
+- ❌ 새 npm 패키지 추가 (기존 것으로 해결)
+- ❌ TypeScript 변환
+- ❌ 디자인 시스템 임의 변경 (컬러, 폰트 등)
+- ❌ Firestore 기존 컬렉션 건드리기
+- ❌ Admin 전용 데이터(수익, 아이디어)를 비로그인 상태에서 노출
+
+---
+
+## 7. 구현 로그
+
+### 2026-04-28: Firestore 연동 + Admin Auth + ADD 모달 구현
+- Firestore 실시간 연동 (onSnapshot)
+- Firebase Auth 로그인 (isAdmin 상태 관리)
+- ADD PROJECT / ADD LOG 모달 (Admin 전용)
+- 우측 상단 숨겨진 ADMIN 버튼 → 로그인 모달
+- Vercel 배포 완료
+
+### 2026-04-28: 우선순위 1 작업 완료 및 기능 고도화
+- 프로젝트 카드 UI 개선 (Next Action, 링크 이동, Progress Bar 적용)
+- ADD PROJECT 모달 필드 추가 및 레이블 가독성 개선
+- EDIT PROJECT (수정) 및 VIEW LOG (프로젝트별 로그 팝업) 기능 구현
+- 전반적인 UI 텍스트 크기 상향 조정으로 가독성 최적화
+- 수익 표시 로직 개선 (₩0 처리 및 K 단위 조건부 적용)
+- 하드코딩된 더미 데이터 제거 및 Firestore 실제 데이터 연동 강화
+- Firestore 컬렉션 경로 동적 설정 (`artifacts/{VITE_FIREBASE_PROJECT_ID}/...`) 및 환경 변수 참조 수정
+
+---
+
+## 8. 세션 시작 / 종료 규칙
+
+### 세션 시작 시
+1. 이 GEMINI.md 파일을 반드시 먼저 읽는다
+2. 섹션 4 로드맵에서 현재 진행할 작업 위치를 파악한다
+3. 작업 시작 전 "어떤 작업을 할 것인지" 한 줄 요약한다
+4. DevlogView.jsx 현재 상태를 확인한다
+
+### 세션 종료 시
+1. 완료한 기능을 섹션 4 로드맵에서 ✅로 업데이트한다
+2. 아래 형식으로 devlog에 로그를 기록한다:
+
+```
+오늘 작업 완료. devlog에 로그 남겨줘.
+프로젝트: nextidealab.app
+메시지: [오늘 한 작업 한 줄 요약]
+상태: building
+태그: 기능추가
+```
+
+3. GEMINI.md 섹션 7 구현 로그에 날짜와 작업 내용을 추가한다
+
+---
+
+## 9. 막히면 Claude에게 가져올 것
+
+- 컴포넌트 구조 변경이 필요할 때
+- Firebase 보안 규칙(Security Rules) 설정
+- 새 기능 기획 및 우선순위 결정
+- 디자인 방향 결정
+- 에러가 2번 이상 반복될 때
+
+---
+
+*Last updated: 2026-04-28 | Architect: Claude (claude.ai) | Builder: Gemini CLI*

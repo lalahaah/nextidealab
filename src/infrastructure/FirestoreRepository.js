@@ -1,7 +1,9 @@
 import {
     collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query
 } from 'firebase/firestore';
-import { db, APP_ID } from './FirebaseConfig';
+import { db } from './FirebaseConfig';
+
+const APP_ID = import.meta.env.VITE_FIREBASE_PROJECT_ID || import.meta.env.VITE_APP_ID || 'nextidealab-2f319';
 
 export class FirestoreRepository {
     constructor(collectionName) {

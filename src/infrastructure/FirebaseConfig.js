@@ -23,4 +23,4 @@ export const storage = getStorage(app);
 // Analytics 초기화 (브라우저 환경 확인)
 export const analytics = isSupported().then(yes => yes ? getAnalytics(app) : null);
 
-export const APP_ID = import.meta.env.VITE_APP_ID || 'nextidealab-2f319';
+export const APP_ID = import.meta.env.VITE_FIREBASE_APP_ID || 'nextidealab-2f319';
