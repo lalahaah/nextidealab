@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { db, auth } from '../../infrastructure/FirebaseConfig';
-import { collection, onSnapshot, addDoc, serverTimestamp, updateDoc, doc, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, serverTimestamp, updateDoc, doc, query, where, getDocs, orderBy, deleteDoc } from 'firebase/firestore';
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { Github, ExternalLink, Edit2 } from 'lucide-react';
 
 export default function DevlogView() {
   const [projects, setProjects] = useState([]);
   const [logs, setLogs] = useState([]);
+  const [ideas, setIdeas] = useState([]); // 아이디어 보관함
   const [projectLogs, setProjectLogs] = useState([]); // 특정 프로젝트용 로그
   const [loading, setLoading] = useState(true);
   const [activeStackFilter, setActiveStackFilter] = useState(null);
@@ -17,9 +18,10 @@ export default function DevlogView() {
   const [loginForm, setLoginForm] = useState({ email: '', password: '' });
 
   // Modal State
-  const [modalType, setModalType] = useState(null); // 'project' | 'edit_project' | 'log' | 'login' | 'view_logs' | null
+  const [modalType, setModalType] = useState(null); // 'project' | 'edit_project' | 'log' | 'login' | 'view_logs' | 'idea' | null
   const [selectedProject, setSelectedProject] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [expandedIdea, setExpandedIdea] = useState(null);
 
   // Form State
   const [projectForm, setProjectForm] = useState({
@@ -28,7 +30,10 @@ export default function DevlogView() {
   const [historyMonth, setHistoryMonth] = useState('2026-01');
   const [historyAmount, setHistoryAmount] = useState('');
   const [logForm, setLogForm] = useState({
-    projectName: '', message: '', status: 'building'
+    projectName: '', message: '', status: 'building', tag: '기타'
+  });
+  const [ideaForm, setIdeaForm] = useState({
+    title: '', description: '', potential: 'mid', tags: ''
   });
 
   const COLORS = {
@@ -118,6 +123,7 @@ export default function DevlogView() {
         return {
           project: data.projectName || data.project || 'Unknown',
           msg: data.message || data.msg || '',
+          tag: data.tag || null,
           date: data.loggedAt?.toDate ? formatTimeAgo(data.loggedAt.toDate()) : 'RECENT',
           color: color
         };
@@ -125,12 +131,26 @@ export default function DevlogView() {
       setLogs(logsData.slice(0, 10)); // 최대 10개만 표시
     });
 
+    // Ideas Real-time Sync (Admin Only)
+    let unsubIdeas = () => {};
+    if (isAdmin) {
+      const colIdeas = collection(db, 'devlog_ideas');
+      unsubIdeas = onSnapshot(colIdeas, (snapshot) => {
+        const ideasData = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })).sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+        setIdeas(ideasData);
+      });
+    }
+
     return () => {
       unsubAuth();
       unsubProjects();
       unsubLogs();
+      unsubIdeas();
     };
-  }, []);
+  }, [isAdmin]);
 
   // 수익 히스토리 데이터 합산 및 차트용 가공
   const revenueChartData = useMemo(() => {
@@ -289,12 +309,43 @@ export default function DevlogView() {
         createdAt: serverTimestamp()
       });
       setModalType(null);
-      setLogForm({ projectName: '', message: '', status: 'building' });
+      setLogForm({ projectName: '', message: '', status: 'building', tag: '기타' });
     } catch (err) {
       console.error(err);
       alert('로그 저장 실패: ' + err.message);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleAddIdea = async (e) => {
+    e.preventDefault();
+    if (!isAdmin) return;
+    setIsSaving(true);
+    try {
+      await addDoc(collection(db, 'devlog_ideas'), {
+        ...ideaForm,
+        tags: ideaForm.tags.split(',').map(t => t.trim()).filter(t => t),
+        createdAt: serverTimestamp()
+      });
+      setModalType(null);
+      setIdeaForm({ title: '', description: '', potential: 'mid', tags: '' });
+    } catch (err) {
+      console.error(err);
+      alert('아이디어 저장 실패: ' + err.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeleteIdea = async (id) => {
+    if (!isAdmin) return;
+    if (window.confirm('아이디어를 삭제하시겠습니까?')) {
+      try {
+        await deleteDoc(doc(db, 'devlog_ideas', id));
+      } catch (err) {
+        console.error('삭제 실패:', err);
+      }
     }
   };
 
@@ -561,7 +612,27 @@ export default function DevlogView() {
                   <div className="absolute -left-[19px] top-3.5 w-2 h-2 rounded-full border-2" style={{ backgroundColor: log.color, borderColor: COLORS.bg }}></div>
                   <div className="flex items-center justify-between p-3 rounded-lg border transition-all hover:border-[#1a3060]" style={{ backgroundColor: COLORS.card, borderColor: COLORS.border }}>
                     <div className="flex flex-col gap-0.5 min-w-0">
-                      <div className="text-[14px] font-semibold" style={{ color: COLORS.cyan, fontFamily: FONTS.mono }}>{log.project}</div>
+                      <div className="flex items-center gap-2">
+                        <div className="text-[14px] font-semibold" style={{ color: COLORS.cyan, fontFamily: FONTS.mono }}>{log.project}</div>
+                        {log.tag && (
+                          <span 
+                            className="text-[10px] px-1.5 py-0.5 rounded border" 
+                            style={{ 
+                              fontFamily: FONTS.mono,
+                              color: log.tag === '기능추가' ? '#00d4ff' : 
+                                     log.tag === '버그수정' ? '#ff4466' : 
+                                     log.tag === '배포' ? '#00ff88' : 
+                                     log.tag === '기획' ? '#ffb300' : '#4a6080',
+                              borderColor: log.tag === '기능추가' ? '#00d4ff44' : 
+                                          log.tag === '버그수정' ? '#ff446644' : 
+                                          log.tag === '배포' ? '#00ff8844' : 
+                                          log.tag === '기획' ? '#ffb30044' : '#4a608044'
+                            }}
+                          >
+                            {log.tag}
+                          </span>
+                        )}
+                      </div>
                       <div className="text-[13px] truncate" style={{ color: COLORS.textMid }}>{log.msg}</div>
                     </div>
                     <span className="text-[11px] uppercase ml-4 shrink-0" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>{log.date}</span>
@@ -643,7 +714,7 @@ export default function DevlogView() {
             )}
 
             {/* Next Actions */}
-            <div>
+            <div className="mb-7">
               <div className="text-[11px] uppercase tracking-[1.8px] pb-2 mb-3 border-b" style={{ color: COLORS.textDim, borderColor: COLORS.border, fontFamily: FONTS.mono }}>Next Actions</div>
               {projects.filter(p => p.nextAction).slice(0, 5).map((p, i) => (
                 <div key={i} className="flex gap-2.5 items-start mb-2.5">
@@ -654,6 +725,60 @@ export default function DevlogView() {
                 </div>
               ))}
             </div>
+
+            {/* Idea Vault (Admin Only) */}
+            {isAdmin && (
+              <div>
+                <div className="flex justify-between items-center pb-2 mb-3 border-b" style={{ borderColor: COLORS.border }}>
+                  <div className="text-[11px] uppercase tracking-[1.8px]" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>Idea Vault</div>
+                  <button 
+                    onClick={() => setModalType('idea')}
+                    className="text-[10px] px-1.5 py-0.5 rounded bg-[#112240] hover:bg-[#1a3060] transition-colors"
+                    style={{ color: COLORS.cyan, fontFamily: FONTS.mono }}
+                  >
+                    + ADD
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  {ideas.length === 0 ? (
+                    <div className="text-[11px] text-center py-4" style={{ color: COLORS.textDim }}>아이디어가 비어있습니다</div>
+                  ) : ideas.map(idea => (
+                    <div key={idea.id} className="p-2.5 rounded border transition-all hover:border-[#1a3060]" style={{ backgroundColor: COLORS.card, borderColor: COLORS.border }}>
+                      <div className="flex justify-between items-start mb-1 gap-2">
+                        <div 
+                          className="text-[13px] font-bold cursor-pointer hover:text-[#00d4ff] transition-colors"
+                          style={{ color: COLORS.white }}
+                          onClick={() => setExpandedIdea(expandedIdea === idea.id ? null : idea.id)}
+                        >
+                          {idea.title}
+                        </div>
+                        <button onClick={() => handleDeleteIdea(idea.id)} className="text-[#4a6080] hover:text-red-400 shrink-0">✕</button>
+                      </div>
+                      <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                        <span 
+                          className="text-[9px] px-1 rounded font-bold"
+                          style={{ 
+                            fontFamily: FONTS.mono,
+                            backgroundColor: idea.potential === 'high' ? '#ff446622' : idea.potential === 'mid' ? '#ffb30022' : '#00d4ff22',
+                            color: idea.potential === 'high' ? '#ff4466' : idea.potential === 'mid' ? '#ffb300' : '#00d4ff',
+                          }}
+                        >
+                          {idea.potential.toUpperCase()}
+                        </span>
+                        {idea.tags && idea.tags.map(t => (
+                          <span key={t} className="text-[9px]" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>#{t}</span>
+                        ))}
+                      </div>
+                      {expandedIdea === idea.id && (
+                        <div className="mt-2 pt-2 border-t text-[11px] leading-relaxed whitespace-pre-wrap" style={{ borderColor: COLORS.border, color: COLORS.textMid }}>
+                          {idea.description}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </aside>
 
@@ -792,18 +917,80 @@ export default function DevlogView() {
 
             {modalType === 'log' && isAdmin && (
               <form onSubmit={handleAddLog} className="space-y-4">
-                <select required className="w-full p-2.5 rounded text-xs" value={logForm.projectName} onChange={e => setLogForm({...logForm, projectName: e.target.value})}>
-                  <option value="">프로젝트 선택</option>
-                  {projects.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
-                </select>
-                <textarea required placeholder="로그 메시지" className="w-full p-2.5 rounded text-xs h-24" value={logForm.message} onChange={e => setLogForm({...logForm, message: e.target.value})} />
-                <select className="w-full p-2.5 rounded text-xs" value={logForm.status} onChange={e => setLogForm({...logForm, status: e.target.value})}>
-                  <option value="building">BUILDING</option>
-                  <option value="live">LIVE</option>
-                  <option value="idea">IDEA</option>
-                </select>
+                <div className="space-y-1">
+                  <div className="text-[10px] uppercase tracking-widest pl-1" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>프로젝트</div>
+                  <select required className="w-full p-2.5 rounded text-xs" value={logForm.projectName} onChange={e => setLogForm({...logForm, projectName: e.target.value})}>
+                    <option value="">프로젝트 선택</option>
+                    {projects.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+                  </select>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <div className="text-[10px] uppercase tracking-widest pl-1" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>로그 태그</div>
+                    <select required className="w-full p-2.5 rounded text-xs" value={logForm.tag} onChange={e => setLogForm({...logForm, tag: e.target.value})}>
+                      <option value="기능추가">기능추가</option>
+                      <option value="버그수정">버그수정</option>
+                      <option value="배포">배포</option>
+                      <option value="기획">기획</option>
+                      <option value="기타">기타</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="text-[10px] uppercase tracking-widest pl-1" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>상태</div>
+                    <select className="w-full p-2.5 rounded text-xs" value={logForm.status} onChange={e => setLogForm({...logForm, status: e.target.value})}>
+                      <option value="building">BUILDING</option>
+                      <option value="live">LIVE</option>
+                      <option value="idea">IDEA</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <div className="text-[10px] uppercase tracking-widest pl-1" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>로그 메시지</div>
+                  <textarea required placeholder="로그 메시지" className="w-full p-2.5 rounded text-xs h-24" value={logForm.message} onChange={e => setLogForm({...logForm, message: e.target.value})} />
+                </div>
+
                 <button disabled={isSaving} className="w-full py-3 rounded font-bold transition-all text-sm mt-2" style={{ backgroundColor: COLORS.cyan, color: '#000', fontFamily: FONTS.mono }}>
                   {isSaving ? 'SAVING...' : 'SAVE LOG'}
+                </button>
+              </form>
+            )}
+
+            {modalType === 'idea' && isAdmin && (
+              /* Firebase Security Rules Recommendation:
+                 match /devlog_ideas/{ideaId} {
+                   allow read, write: if request.auth != null;
+                 }
+              */
+              <form onSubmit={handleAddIdea} className="space-y-4">
+                <div className="space-y-1">
+                  <div className="text-[10px] uppercase tracking-widest pl-1" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>Idea Title</div>
+                  <input required placeholder="아이디어 제목" className="w-full p-2.5 rounded text-xs" value={ideaForm.title} onChange={e => setIdeaForm({...ideaForm, title: e.target.value})} />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <div className="text-[10px] uppercase tracking-widest pl-1" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>Potential</div>
+                    <select required className="w-full p-2.5 rounded text-xs" value={ideaForm.potential} onChange={e => setIdeaForm({...ideaForm, potential: e.target.value})}>
+                      <option value="high">🔥 HIGH</option>
+                      <option value="mid">👍 MID</option>
+                      <option value="low">💡 LOW</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="text-[10px] uppercase tracking-widest pl-1" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>Tags</div>
+                    <input placeholder="comma, separated" className="w-full p-2.5 rounded text-xs" value={ideaForm.tags} onChange={e => setIdeaForm({...ideaForm, tags: e.target.value})} />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <div className="text-[10px] uppercase tracking-widest pl-1" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>Description</div>
+                  <textarea required placeholder="상세 내용" className="w-full p-2.5 rounded text-xs h-32" value={ideaForm.description} onChange={e => setIdeaForm({...ideaForm, description: e.target.value})} />
+                </div>
+
+                <button disabled={isSaving} className="w-full py-3.5 rounded font-bold transition-all text-sm mt-2" style={{ backgroundColor: COLORS.cyan, color: '#000', fontFamily: FONTS.mono }}>
+                  {isSaving ? 'SAVING...' : 'SAVE IDEA'}
                 </button>
               </form>
             )}
