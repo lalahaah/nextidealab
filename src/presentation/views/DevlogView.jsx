@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { db, auth } from '../../infrastructure/FirebaseConfig';
 import { collection, onSnapshot, addDoc, serverTimestamp, updateDoc, doc, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
@@ -23,7 +23,7 @@ export default function DevlogView() {
 
   // Form State
   const [projectForm, setProjectForm] = useState({
-    name: '', description: '', status: 'building', tags: '', stack: '', deployUrl: '', githubUrl: '', nextAction: '', progress: 0, revenue: 0
+    name: '', description: '', status: 'building', tags: '', stack: '', deployUrl: '', githubUrl: '', nextAction: '', progress: 0, revenue: 0, targetMRR: 0
   });
   const [logForm, setLogForm] = useState({
     projectName: '', message: '', status: 'building'
@@ -86,6 +86,8 @@ export default function DevlogView() {
           tags: data.tags || [],
           stack: data.stack || [],
           revenue: data.revenue || 0,
+          targetMRR: data.targetMRR || 0,
+          revenueHistory: data.revenueHistory || [],
           deployUrl: data.deployUrl || null,
           githubUrl: data.githubUrl || null,
           nextAction: data.nextAction || null,
@@ -128,6 +130,23 @@ export default function DevlogView() {
     };
   }, []);
 
+  // 수익 히스토리 데이터 합산 및 차트용 가공
+  const revenueChartData = useMemo(() => {
+    if (!isAdmin) return [];
+    const monthlyMap = {};
+    projects.forEach(p => {
+      (p.revenueHistory || []).forEach(entry => {
+        const month = entry.month; // "2026-01" 형식 기대
+        monthlyMap[month] = (monthlyMap[month] || 0) + entry.amount;
+      });
+    });
+    
+    // 월별 정렬
+    return Object.entries(monthlyMap)
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([month, amount]) => ({ month: month.split('-')[1], fullMonth: month, amount }));
+  }, [projects, isAdmin]);
+
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoginError('');
@@ -160,12 +179,13 @@ export default function DevlogView() {
         stack: projectForm.stack.split(',').map(s => s.trim()).filter(s => s),
         progress: Number(projectForm.progress),
         revenue: Number(projectForm.revenue),
+        targetMRR: projectForm.targetMRR ? Number(projectForm.targetMRR) : null,
         startedAt: serverTimestamp(),
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       });
       setModalType(null);
-      setProjectForm({ name: '', description: '', status: 'building', tags: '', stack: '', deployUrl: '', githubUrl: '', nextAction: '', progress: 0, revenue: 0 });
+      setProjectForm({ name: '', description: '', status: 'building', tags: '', stack: '', deployUrl: '', githubUrl: '', nextAction: '', progress: 0, revenue: 0, targetMRR: 0 });
     } catch (err) {
       console.error(err);
       alert('저장 실패: ' + err.message);
@@ -186,7 +206,8 @@ export default function DevlogView() {
       githubUrl: p.githubUrl || '',
       nextAction: p.nextAction || '',
       progress: p.progress,
-      revenue: p.revenue
+      revenue: p.revenue,
+      targetMRR: p.targetMRR || 0
     });
     setModalType('edit_project');
   };
@@ -203,6 +224,7 @@ export default function DevlogView() {
         stack: projectForm.stack.split(',').map(s => s.trim()).filter(s => s),
         progress: Number(projectForm.progress),
         revenue: Number(projectForm.revenue),
+        targetMRR: projectForm.targetMRR ? Number(projectForm.targetMRR) : null,
         updatedAt: serverTimestamp()
       });
       setModalType(null);
@@ -419,7 +441,13 @@ export default function DevlogView() {
               <div className="col-span-full py-20 text-center text-sm" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>Loading...</div>
             ) : filteredProjects.length === 0 ? (
               <div className="col-span-full py-20 text-center text-sm" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>아직 프로젝트가 없습니다</div>
-            ) : filteredProjects.map(p => (
+            ) : filteredProjects.map(p => {
+              const mrrRate = p.targetMRR > 0 ? Math.round((p.revenue / p.targetMRR) * 100) : null;
+              let mrrColor = COLORS.textDim;
+              if (mrrRate >= 100) mrrColor = COLORS.green;
+              else if (mrrRate >= 50) mrrColor = COLORS.amber;
+
+              return (
               <div
                 key={p.id}
                 className={`relative group rounded-xl border overflow-hidden transition-all hover:-translate-y-0.5 hover:border-[#1a3060] project-card-custom ${p.statusClass}`}
@@ -485,6 +513,9 @@ export default function DevlogView() {
                         </div>
                       </div>
                       <span className="text-[8px] uppercase tracking-wider" style={{ color: p.statusColor, fontFamily: FONTS.mono }}>{p.progress}% COMPLETED</span>
+                      {isAdmin && mrrRate !== null && (
+                        <span className="text-[11px] uppercase mt-0.5" style={{ color: mrrColor, fontFamily: FONTS.mono }}>MRR 목표 {mrrRate}%</span>
+                      )}
                     </div>
                     <button 
                       onClick={() => handleViewLogs(p)}
@@ -496,7 +527,7 @@ export default function DevlogView() {
                   </div>
                 </div>
               </div>
-            ))}
+            )})}
           </div>
 
           {/* Timeline */}
@@ -528,7 +559,7 @@ export default function DevlogView() {
           className="hidden xl:flex flex-col w-[230px] shrink-0 border-l sticky top-[56px] h-[calc(100vh-56px)]"
           style={{ backgroundColor: COLORS.bg2, borderColor: COLORS.border }}
         >
-          <div className="flex-1 overflow-y-auto overflow-x-hidden" style={{ padding: '28px 18px' }}>
+          <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar" style={{ padding: '28px 18px' }}>
             {/* Revenue Tracker */}
             <div className="mb-7">
               <div className="text-[11px] uppercase tracking-[1.8px] pb-2 mb-3 border-b" style={{ color: COLORS.textDim, borderColor: COLORS.border, fontFamily: FONTS.mono }}>Revenue Tracker</div>
@@ -545,6 +576,53 @@ export default function DevlogView() {
                 <span className="text-[13px] font-bold shrink-0" style={{ color: COLORS.green, fontFamily: FONTS.mono }}>{formatRevenue(projects.reduce((acc, p) => acc + (p.revenue || 0), 0))}</span>
               </div>
             </div>
+
+            {/* Revenue History Chart (Admin Only) */}
+            {isAdmin && (
+              <div className="mb-7">
+                <div className="text-[11px] uppercase tracking-[1.8px] pb-2 mb-3 border-b" style={{ color: COLORS.textDim, borderColor: COLORS.border, fontFamily: FONTS.mono }}>Revenue History</div>
+                {revenueChartData.length < 2 ? (
+                  <div className="text-[10px] py-4 text-center leading-relaxed" style={{ color: COLORS.textDim }}>수익 데이터를 입력해주세요</div>
+                ) : (
+                  <div className="relative w-full h-[80px]">
+                    <svg className="w-full h-full" viewBox="0 0 100 40" preserveAspectRatio="none">
+                      {/* Lines */}
+                      <path
+                        d={`M ${revenueChartData.map((d, i) => {
+                          const x = (i / (revenueChartData.length - 1)) * 100;
+                          const maxAmount = Math.max(...revenueChartData.map(v => v.amount));
+                          const y = 40 - (d.amount / maxAmount) * 35;
+                          return `${x},${y}`;
+                        }).join(' L ')}`}
+                        fill="none"
+                        stroke={COLORS.cyan}
+                        strokeWidth="1.5"
+                        strokeLinejoin="round"
+                        strokeLinecap="round"
+                      />
+                      {/* Dots */}
+                      {revenueChartData.map((d, i) => {
+                        const x = (i / (revenueChartData.length - 1)) * 100;
+                        const maxAmount = Math.max(...revenueChartData.map(v => v.amount));
+                        const y = 40 - (d.amount / maxAmount) * 35;
+                        return (
+                          <g key={i} className="group/dot cursor-pointer">
+                            <circle cx={x} cy={y} r="1.5" fill={COLORS.cyan} />
+                            <title>{`${d.fullMonth}: ${formatRevenue(d.amount)}`}</title>
+                          </g>
+                        );
+                      })}
+                    </svg>
+                    {/* X-axis labels */}
+                    <div className="flex justify-between mt-1 px-0.5">
+                      {revenueChartData.map((d, i) => (
+                        <span key={i} className="text-[9px]" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>{d.month}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Next Actions */}
             <div>
@@ -626,13 +704,18 @@ export default function DevlogView() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <div className="text-[10px] uppercase tracking-widest pl-1" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>Progress</div>
+                    <div className="text-[10px] uppercase tracking-widest pl-1" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>Progress (%)</div>
                     <input type="number" min="0" max="100" placeholder="진행률 (0~100%)" className="w-full p-2.5 rounded text-xs" value={projectForm.progress} onChange={e => setProjectForm({...projectForm, progress: e.target.value})} />
                   </div>
                   <div className="space-y-1">
-                    <div className="text-[10px] uppercase tracking-widest pl-1" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>Next Action</div>
-                    <input placeholder="다음 할 일 (예: Stripe 결제 연동)" className="w-full p-2.5 rounded text-xs" value={projectForm.nextAction} onChange={e => setProjectForm({...projectForm, nextAction: e.target.value})} />
+                    <div className="text-[10px] uppercase tracking-widest pl-1" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>목표 MRR (₩)</div>
+                    <input type="number" placeholder="목표 월 수익 (예: 1000000)" className="w-full p-2.5 rounded text-xs" value={projectForm.targetMRR} onChange={e => setProjectForm({...projectForm, targetMRR: e.target.value})} />
                   </div>
+                </div>
+
+                <div className="space-y-1">
+                  <div className="text-[10px] uppercase tracking-widest pl-1" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>Next Action</div>
+                  <input placeholder="다음 할 일 (예: Stripe 결제 연동)" className="w-full p-2.5 rounded text-xs" value={projectForm.nextAction} onChange={e => setProjectForm({...projectForm, nextAction: e.target.value})} />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
