@@ -59,27 +59,27 @@ font-mono:    'Space Mono', monospace   /* 뱃지, 라벨, 날짜, 태그, 스�
 
 ## 3. 구현 로그 및 현재 상태
 
-### 2026-04-26: UI 재구축 및 세부 정교화 (HTML 기반 포팅)
-- **UI 포팅 완료**: `devlog_nextidealab.html`의 3단 레이아웃(사이드바 210px, 메인 flex:1, 우측패널 230px)을 React 컴포넌트로 구현.
-- **UI 세부 정교화**: 
-  - 우측 패널의 레이아웃 고정 및 오버플로우 문제 완벽 해결 (Stack Usage, Revenue Tracker 가독성 개선).
-  - 프로젝트 카드 상단 상태 라인 두께를 3px로 강화하여 가시성 확보.
-  - 스탯 카드 숫자를 2.8rem으로 확대하여 시각적 강조.
-- **기능 구현**: 사이드바 Stack 항목 클릭 시 해당 기술 스택별 프로젝트 필터링 기능 추가 (토글 방식).
-- **컴포넌트 단일화**: 현재 `DevlogView.jsx` 파일 내에 모든 서브 UI 로직을 포함하여 시각적 일관성 확보.
-- **더미 데이터 적용**: `PROJECTS`, `LOGS` 상수를 통해 하드코딩된 데이터로 우선 렌더링.
-- **라우팅 완료**: `App.jsx`에 `/devlog` 경로 및 내비게이션 링크 추가 완료.
+### 2026-04-28: 데이터 동적 연동 및 Admin 기능 구현 (Firestore)
+- **Firestore 실시간 연동**: `devlog_projects`, `devlog_logs` 컬렉션을 `onSnapshot`으로 연결하여 데이터 변경 시 즉시 반영되도록 구현.
+- **Admin 입력 폼 구현**: 프로젝트 및 로그를 추가할 수 있는 모달 시스템 구축.
+  - 프로젝트: 이름, 설명, 상태, 태그, 스택, URL, 수익 필드 지원.
+  - 로그: 프로젝트 선택 및 메시지 입력 지원.
+- **데이터 시딩 스크립트 보완**: `seedDevlog.js`에서 `.env.local` 지원 및 환경 변수 파싱 로직 강화.
+- **UI 로직 고도화**: 
+  - 로딩 및 빈 상태(Empty State) 대응 UI 추가.
+  - 수익(Revenue) 트래커 실시간 합산 로직 적용.
+  - 스택 필터링 기능 강화 (Firestore 데이터 기반 자동 추출).
 
 ---
 
-## 4. 향후 작업 계획 (Step 1-2 재조정)
+## 4. 향후 작업 계획 (Step 2-3)
 
-### Step 1 — 데이터 동적 연동 (Firebase)
-- `DevlogRepository.js` 및 `useDevlog.js`를 복구하여 Firestore 데이터를 `DevlogView.jsx`의 하드코딩된 부분과 교체.
-- 스키마에 `activity` (활동 내역) 및 `stackUsage` 필드 보완 필요.
+### Step 2 — 컴포넌트 모듈화 (진행 예정)
+- `DevlogView.jsx` 내부의 대형 코드를 `src/presentation/components/devlog/` 하위의 독립 컴포넌트로 분리.
 
-### Step 2 — 컴포넌트 모듈화
-- `DevlogView.jsx` 내부의 대형 코드를 `src/presentation/components/devlog/` 하위의 독립 컴포넌트로 분리하여 유지보수성 향상.
+### Step 3 — 삭제 및 수정 기능 추가
+- Admin 모달에 기존 프로젝트/로그 수정 및 삭제 기능 보완.
+- Firebase Auth 연동을 통한 Admin 접근 제어 강화.
 
 ---
 

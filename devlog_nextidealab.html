@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEXT IDEA LAB / DEVLOG</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
+
+  :root {
+    --bg:       #050a14;
+    --bg2:      #080f1c;
+    --bg3:      #0b1525;
+    --card:     #0d1a2d;
+    --border:   #112240;
+    --border2:  #1a3060;
+    --cyan:     #00d4ff;
+    --cyan-dim: #00d4ff22;
+    --cyan-mid: #00d4ff44;
+    --text:     #c8d8f0;
+    --text-dim: #4a6080;
+    --text-mid: #7a9ab8;
+    --white:    #e8f4ff;
+    --green:    #00ff88;
+    --amber:    #ffb300;
+    --blue:     #4488ff;
+    --red:      #ff4466;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Space Grotesk', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 13px;
+  }
+
+  /* ── NAV ── */
+  nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 40px;
+    height: 56px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .nav-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+  }
+  .logo-icon {
+    width: 22px;
+    height: 22px;
+  }
+  .logo-text {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: var(--white);
+    text-transform: uppercase;
+  }
+
+  .nav-links {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+  }
+  .nav-link {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    padding: 6px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.2s;
+  }
+  .nav-link:hover { color: var(--text-mid); }
+  .nav-link.active {
+    color: var(--white);
+    border-color: var(--border2);
+    background: var(--bg3);
+  }
+  .nav-link.devlog-active {
+    color: var(--cyan);
+    border-color: var(--cyan-mid);
+    background: var(--cyan-dim);
+  }
+
+  /* ── LAYOUT ── */
+  .layout {
+    display: flex;
+    min-height: calc(100vh - 56px);
+  }
+
+  /* ── SIDEBAR ── */
+  aside {
+    width: 210px;
+    border-right: 1px solid var(--border);
+    padding: 28px 0;
+    background: var(--bg2);
+    flex-shrink: 0;
+    position: sticky;
+    top: 56px;
+    height: calc(100vh - 56px);
+    overflow-y: auto;
+  }
+
+  .aside-section { margin-bottom: 28px; }
+  .aside-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 1.8px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    padding: 0 20px 8px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 8px;
+  }
+
+  .aside-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 20px;
+    cursor: pointer;
+    color: var(--text-dim);
+    font-size: 12px;
+    transition: all 0.15s;
+    border-left: 2px solid transparent;
+  }
+  .aside-item:hover { color: var(--text-mid); background: var(--bg3); }
+  .aside-item.active {
+    color: var(--cyan);
+    border-left-color: var(--cyan);
+    background: var(--cyan-dim);
+  }
+  .aside-item-left { display: flex; align-items: center; gap: 8px; }
+  .aside-dot { width: 6px; height: 6px; border-radius: 50%; }
+  .aside-count {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    color: var(--text-dim);
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    padding: 1px 6px;
+    border-radius: 20px;
+  }
+  .active .aside-count {
+    color: var(--cyan);
+    border-color: var(--cyan-mid);
+    background: var(--cyan-dim);
+  }
+
+  .stack-tag-aside {
+    font-size: 10px;
+    color: var(--text-dim);
+    padding: 6px 20px;
+    cursor: pointer;
+    display: block;
+    transition: all 0.15s;
+  }
+  .stack-tag-aside:hover { color: var(--cyan); }
+
+  /* ── MAIN ── */
+  main {
+    flex: 1;
+    padding: 36px 40px;
+    overflow-y: auto;
+  }
+
+  /* HEADER */
+  .page-header { margin-bottom: 36px; }
+  .page-breadcrumb {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+  }
+  .page-breadcrumb span { color: var(--cyan); }
+  .page-title {
+    font-size: 36px;
+    font-weight: 700;
+    color: var(--white);
+    letter-spacing: -0.5px;
+    margin-bottom: 6px;
+  }
+  .page-title span { color: var(--cyan); }
+  .page-sub {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+
+  /* STATS */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 32px;
+  }
+  .stat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 18px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .stat-card:hover { border-color: var(--border2); }
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+  }
+  .stat-card.c1::before { background: var(--cyan); }
+  .stat-card.c2::before { background: var(--green); }
+  .stat-card.c3::before { background: var(--amber); }
+  .stat-card.c4::before { background: #a78bfa; }
+
+  .stat-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 10px;
+  }
+  .stat-val { font-size: 28px; font-weight: 700; color: var(--white); line-height: 1; margin-bottom: 6px; }
+  .stat-val.green { color: var(--green); }
+  .stat-val.amber { color: var(--amber); }
+  .stat-val.purple { color: #a78bfa; }
+  .stat-sub { font-size: 10px; color: var(--text-dim); }
+
+  /* FILTER */
+  .filter-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  .search-wrap {
+    flex: 1;
+    max-width: 300px;
+    position: relative;
+    margin-left: auto;
+  }
+  .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-dim); font-size: 12px; }
+  .search-input {
+    width: 100%;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 7px 12px 7px 32px;
+    color: var(--text-mid);
+    font-size: 12px;
+    font-family: 'Space Grotesk', sans-serif;
+    outline: none;
+  }
+  .search-input:focus { border-color: var(--border2); }
+  .search-input::placeholder { color: var(--text-dim); }
+
+  .chip {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 6px 14px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .chip:hover { border-color: var(--border2); color: var(--text-mid); }
+  .chip.active {
+    background: var(--cyan);
+    border-color: var(--cyan);
+    color: #000;
+    font-weight: 700;
+  }
+
+  /* PROJECT GRID */
+  .section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .section-title {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+  .section-count {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    color: var(--cyan);
+  }
+
+  .project-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin-bottom: 40px;
+  }
+
+  .project-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s, transform 0.15s;
+  }
+  .project-card:hover {
+    border-color: var(--border2);
+    transform: translateY(-2px);
+  }
+
+  /* Status line */
+  .project-card::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+  }
+  .s-live::after { background: var(--green); }
+  .s-building::after { background: var(--amber); }
+  .s-idea::after { background: var(--blue); }
+  .s-paused::after { background: var(--text-dim); }
+
+  .card-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 4px;
+  }
+  .card-tags { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+
+  /* Badges like the site */
+  .badge {
+    font-family: 'Space Mono', monospace;
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 4px;
+  }
+  .badge-live { background: var(--cyan); color: #000; }
+  .badge-beta { border: 1px solid var(--text-dim); color: var(--text-mid); background: transparent; }
+  .badge-building { border: 1px solid var(--amber); color: var(--amber); background: transparent; }
+  .badge-idea { border: 1px solid var(--blue); color: var(--blue); background: transparent; }
+  .badge-paused { border: 1px solid var(--text-dim); color: var(--text-dim); background: transparent; }
+
+  .card-type-tags {
+    font-family: 'Space Mono', monospace;
+    font-size: 8px;
+    letter-spacing: 1px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+
+  .card-arrow {
+    color: var(--text-dim);
+    font-size: 14px;
+    transition: color 0.15s;
+    flex-shrink: 0;
+    margin-left: 8px;
+  }
+  .project-card:hover .card-arrow { color: var(--cyan); }
+
+  .card-name {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--white);
+    margin: 10px 0 6px;
+    letter-spacing: -0.2px;
+  }
+  .card-desc {
+    font-size: 11px;
+    color: var(--text-dim);
+    line-height: 1.6;
+    margin-bottom: 14px;
+  }
+
+  .card-stack { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 14px; }
+  .stack-pill {
+    font-size: 9px;
+    padding: 2px 7px;
+    border: 1px solid var(--border2);
+    border-radius: 3px;
+    color: var(--text-mid);
+    font-family: 'Space Mono', monospace;
+    letter-spacing: 0.5px;
+  }
+
+  .card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid var(--border);
+    padding-top: 10px;
+  }
+  .card-date {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    color: var(--text-dim);
+  }
+  .card-action {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    color: var(--cyan);
+    letter-spacing: 0.5px;
+    cursor: pointer;
+  }
+
+  /* ── TIMELINE ── */
+  .timeline-section { margin-bottom: 40px; }
+  .timeline { position: relative; padding-left: 24px; }
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 7px; top: 8px; bottom: 0;
+    width: 1px;
+    background: linear-gradient(to bottom, var(--cyan-mid), transparent);
+  }
+
+  .tl-entry { position: relative; margin-bottom: 10px; }
+  .tl-node {
+    position: absolute;
+    left: -20px;
+    top: 14px;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    border: 1px solid var(--bg);
+  }
+  .tl-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: border-color 0.15s;
+  }
+  .tl-card:hover { border-color: var(--border2); }
+  .tl-left { display: flex; flex-direction: column; gap: 3px; }
+  .tl-project {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--cyan);
+    font-family: 'Space Mono', monospace;
+  }
+  .tl-msg { font-size: 11px; color: var(--text-mid); }
+  .tl-date {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    color: var(--text-dim);
+    white-space: nowrap;
+    margin-left: 16px;
+  }
+
+  /* ── RIGHT PANEL ── */
+  .right-panel {
+    width: 230px;
+    border-left: 1px solid var(--border);
+    padding: 28px 18px;
+    background: var(--bg2);
+    flex-shrink: 0;
+    position: sticky;
+    top: 56px;
+    height: calc(100vh - 56px);
+    overflow-y: auto;
+  }
+
+  .panel-block { margin-bottom: 28px; }
+  .panel-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 1.8px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* Activity grid */
+  .activity-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 3px;
+    margin-bottom: 6px;
+  }
+  .act-cell {
+    height: 14px;
+    border-radius: 2px;
+    background: var(--border);
+  }
+  .act-cell.l1 { background: #00d4ff18; }
+  .act-cell.l2 { background: #00d4ff40; }
+  .act-cell.l3 { background: #00d4ff70; }
+  .act-cell.l4 { background: var(--cyan); }
+  .act-label { font-family: 'Space Mono', monospace; font-size: 9px; color: var(--text-dim); }
+
+  /* Stack bars */
+  .bar-row { margin-bottom: 9px; }
+  .bar-head { display: flex; justify-content: space-between; margin-bottom: 4px; }
+  .bar-name { font-size: 10px; color: var(--text-mid); }
+  .bar-pct { font-family: 'Space Mono', monospace; font-size: 9px; color: var(--text-dim); }
+  .bar-track { height: 3px; background: var(--border); border-radius: 2px; }
+  .bar-fill { height: 100%; border-radius: 2px; background: var(--cyan); }
+
+  /* Revenue */
+  .rev-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .rev-name { font-size: 10px; color: var(--text-dim); }
+  .rev-val { font-family: 'Space Mono', monospace; font-size: 10px; color: var(--green); font-weight: 700; }
+  .rev-val.zero { color: var(--text-dim); }
+  .rev-total {
+    border-top: 1px solid var(--border);
+    padding-top: 8px;
+    margin-top: 4px;
+    display: flex;
+    justify-content: space-between;
+  }
+  .rev-total-label { font-size: 10px; color: var(--text-dim); }
+  .rev-total-val { font-family: 'Space Mono', monospace; font-size: 11px; color: var(--green); font-weight: 700; }
+
+  /* Next actions */
+  .action-item { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 9px; }
+  .action-bullet { width: 4px; height: 4px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
+  .action-text { font-size: 10px; color: var(--text-dim); line-height: 1.4; }
+
+  /* FOOTER */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 24px 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 20px;
+  }
+  .footer-logo {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+  .footer-copy {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    color: var(--text-dim);
+    letter-spacing: 0.5px;
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a class="nav-logo" href="#">
+    <svg class="logo-icon" viewBox="0 0 22 22" fill="none">
+      <polygon points="4,2 18,11 4,20" fill="#00d4ff"/>
+    </svg>
+    <span class="logo-text">Next Idea Lab</span>
+  </a>
+  <div class="nav-links">
+    <div class="nav-link">Projects</div>
+    <div class="nav-link">Insights</div>
+    <div class="nav-link devlog-active">Devlog ✦</div>
+  </div>
+</nav>
+
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <aside>
+    <div class="aside-section">
+      <div class="aside-label">View</div>
+      <div class="aside-item active">
+        <div class="aside-item-left"><span>⊞</span> All Projects</div>
+        <span class="aside-count">10</span>
+      </div>
+      <div class="aside-item">
+        <div class="aside-item-left"><span>◎</span> Timeline</div>
+      </div>
+      <div class="aside-item">
+        <div class="aside-item-left"><span>↗</span> Live Only</div>
+        <span class="aside-count">2</span>
+      </div>
+    </div>
+
+    <div class="aside-section">
+      <div class="aside-label">Status</div>
+      <div class="aside-item">
+        <div class="aside-item-left">
+          <div class="aside-dot" style="background:var(--green)"></div> Live
+        </div>
+        <span class="aside-count">2</span>
+      </div>
+      <div class="aside-item">
+        <div class="aside-item-left">
+          <div class="aside-dot" style="background:var(--amber)"></div> Building
+        </div>
+        <span class="aside-count">3</span>
+      </div>
+      <div class="aside-item">
+        <div class="aside-item-left">
+          <div class="aside-dot" style="background:var(--blue)"></div> Idea
+        </div>
+        <span class="aside-count">4</span>
+      </div>
+      <div class="aside-item">
+        <div class="aside-item-left">
+          <div class="aside-dot" style="background:var(--text-dim)"></div> Paused
+        </div>
+        <span class="aside-count">1</span>
+      </div>
+    </div>
+
+    <div class="aside-section">
+      <div class="aside-label">Stack</div>
+      <span class="stack-tag-aside">Next.js</span>
+      <span class="stack-tag-aside">Supabase</span>
+      <span class="stack-tag-aside">Claude API</span>
+      <span class="stack-tag-aside">Vercel</span>
+      <span class="stack-tag-aside">FastAPI</span>
+      <span class="stack-tag-aside">Stripe</span>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main>
+    <!-- HEADER -->
+    <div class="page-header">
+      <div class="page-breadcrumb">Home › Projects › <span>DEVLOG</span></div>
+      <div class="page-title">Build Log.<span>_</span></div>
+      <div class="page-sub">실시간 빌드 아카이브 &nbsp;/&nbsp; 개발 대시보드</div>
+    </div>
+
+    <!-- STATS -->
+    <div class="stats-row">
+      <div class="stat-card c1">
+        <div class="stat-label">Total Projects</div>
+        <div class="stat-val">10</div>
+        <div class="stat-sub">+2 this month</div>
+      </div>
+      <div class="stat-card c2">
+        <div class="stat-label">Live</div>
+        <div class="stat-val green">2</div>
+        <div class="stat-sub">배포 완료</div>
+      </div>
+      <div class="stat-card c3">
+        <div class="stat-label">In Progress</div>
+        <div class="stat-val amber">3</div>
+        <div class="stat-sub">빌딩 중</div>
+      </div>
+      <div class="stat-card c4">
+        <div class="stat-label">Build Streak</div>
+        <div class="stat-val purple">12d</div>
+        <div class="stat-sub">연속 빌드 🔥</div>
+      </div>
+    </div>
+
+    <!-- FILTER -->
+    <div class="filter-row">
+      <div class="chip active">ALL</div>
+      <div class="chip">AI</div>
+      <div class="chip">WEB</div>
+      <div class="chip">DATA SCIENCE</div>
+      <div class="chip">DESIGN</div>
+      <div class="search-wrap">
+        <span class="search-icon">⌕</span>
+        <input class="search-input" placeholder="Search..." />
+      </div>
+    </div>
+
+    <!-- PROJECT GRID -->
+    <div class="section-head">
+      <span class="section-title">Projects</span>
+      <span class="section-count">10 total</span>
+    </div>
+
+    <div class="project-grid">
+
+      <div class="project-card s-live">
+        <div class="card-top">
+          <div class="card-tags">
+            <span class="badge badge-live">LIVE</span>
+            <span class="card-type-tags">WEB / AI</span>
+          </div>
+          <span class="card-arrow">↗</span>
+        </div>
+        <div class="card-name">nextidealab.app</div>
+        <div class="card-desc">프로젝트 허브 & 블로그. 바이브코딩으로 직접 구축한 메인 플랫폼.</div>
+        <div class="card-stack">
+          <span class="stack-pill">Next.js</span>
+          <span class="stack-pill">Vercel</span>
+          <span class="stack-pill">MDX</span>
+        </div>
+        <div class="card-footer">
+          <span class="card-date">2025.03.10</span>
+          <span class="card-action">VIEW LOG →</span>
+        </div>
+      </div>
+
+      <div class="project-card s-building">
+        <div class="card-top">
+          <div class="card-tags">
+            <span class="badge badge-building">BUILDING</span>
+            <span class="card-type-tags">AI / WEB</span>
+          </div>
+          <span class="card-arrow">↗</span>
+        </div>
+        <div class="card-name">AI 광고 카피 생성기</div>
+        <div class="card-desc">Claude API로 광고 소재 자동 생성. 내부 툴 → SaaS 전환 예정.</div>
+        <div class="card-stack">
+          <span class="stack-pill">Claude API</span>
+          <span class="stack-pill">Next.js</span>
+          <span class="stack-pill">Supabase</span>
+        </div>
+        <div class="card-footer">
+          <span class="card-date">2025.04.02</span>
+          <span class="card-action">VIEW LOG →</span>
+        </div>
+      </div>
+
+      <div class="project-card s-live">
+        <div class="card-top">
+          <div class="card-tags">
+            <span class="badge badge-live">LIVE</span>
+            <span class="card-type-tags">WEB / DESIGN</span>
+          </div>
+          <span class="card-arrow">↗</span>
+        </div>
+        <div class="card-name">랜딩페이지 빌더</div>
+        <div class="card-desc">광고대행사 클라이언트용 랜딩 자동 생성. 유료 플랜 운영 중.</div>
+        <div class="card-stack">
+          <span class="stack-pill">Next.js</span>
+          <span class="stack-pill">Stripe</span>
+          <span class="stack-pill">Supabase</span>
+        </div>
+        <div class="card-footer">
+          <span class="card-date">2025.02.15</span>
+          <span class="card-action">VIEW LOG →</span>
+        </div>
+      </div>
+
+      <div class="project-card s-building">
+        <div class="card-top">
+          <div class="card-tags">
+            <span class="badge badge-building">BUILDING</span>
+            <span class="card-type-tags">AI / DATA SCIENCE</span>
+          </div>
+          <span class="card-arrow">↗</span>
+        </div>
+        <div class="card-name">키워드 리서치 SaaS</div>
+        <div class="card-desc">SEO 키워드 자동 분석 + 경쟁도 체크. MVP 개발 60% 완료.</div>
+        <div class="card-stack">
+          <span class="stack-pill">Python</span>
+          <span class="stack-pill">FastAPI</span>
+          <span class="stack-pill">Claude API</span>
+        </div>
+        <div class="card-footer">
+          <span class="card-date">2025.04.10</span>
+          <span class="card-action">VIEW LOG →</span>
+        </div>
+      </div>
+
+      <div class="project-card s-idea">
+        <div class="card-top">
+          <div class="card-tags">
+            <span class="badge badge-idea">IDEA</span>
+            <span class="card-type-tags">AI / WEB</span>
+          </div>
+          <span class="card-arrow">↗</span>
+        </div>
+        <div class="card-name">AI 인플루언서 매칭</div>
+        <div class="card-desc">광고주 ↔ 인플루언서 AI 매칭. 라운드미디어 레버리지 가능.</div>
+        <div class="card-stack">
+          <span class="stack-pill">아이디어</span>
+          <span class="stack-pill">Claude API</span>
+        </div>
+        <div class="card-footer">
+          <span class="card-date">2025.04.18</span>
+          <span class="card-action">VIEW PLAN →</span>
+        </div>
+      </div>
+
+      <div class="project-card s-paused">
+        <div class="card-top">
+          <div class="card-tags">
+            <span class="badge badge-paused">PAUSED</span>
+            <span class="card-type-tags">WEB</span>
+          </div>
+          <span class="card-arrow">↗</span>
+        </div>
+        <div class="card-name">뉴스레터 자동화</div>
+        <div class="card-desc">AI 뉴스레터 큐레이션 자동화. 우선순위 밀림으로 일시 중단.</div>
+        <div class="card-stack">
+          <span class="stack-pill">Next.js</span>
+          <span class="stack-pill">Resend</span>
+        </div>
+        <div class="card-footer">
+          <span class="card-date">2025.03.20</span>
+          <span class="card-action">VIEW LOG →</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- TIMELINE -->
+    <div class="timeline-section">
+      <div class="section-head">
+        <span class="section-title">Recent Build Log</span>
+        <span class="section-count">View all →</span>
+      </div>
+      <div class="timeline">
+
+        <div class="tl-entry">
+          <div class="tl-node" style="background:var(--green)"></div>
+          <div class="tl-card">
+            <div class="tl-left">
+              <div class="tl-project">nextidealab.app</div>
+              <div class="tl-msg">✦ /devlog 페이지 추가 완료 — 대시보드 MVP 배포</div>
+            </div>
+            <div class="tl-date">TODAY</div>
+          </div>
+        </div>
+
+        <div class="tl-entry">
+          <div class="tl-node" style="background:var(--amber)"></div>
+          <div class="tl-card">
+            <div class="tl-left">
+              <div class="tl-project">AI 광고 카피 생성기</div>
+              <div class="tl-msg">Supabase Auth 연동, 토큰 카운팅 로직 추가</div>
+            </div>
+            <div class="tl-date">1D AGO</div>
+          </div>
+        </div>
+
+        <div class="tl-entry">
+          <div class="tl-node" style="background:var(--amber)"></div>
+          <div class="tl-card">
+            <div class="tl-left">
+              <div class="tl-project">키워드 리서치 SaaS</div>
+              <div class="tl-msg">Claude API 프롬프트 최적화, 응답속도 40% 개선</div>
+            </div>
+            <div class="tl-date">2D AGO</div>
+          </div>
+        </div>
+
+        <div class="tl-entry">
+          <div class="tl-node" style="background:var(--green)"></div>
+          <div class="tl-card">
+            <div class="tl-left">
+              <div class="tl-project">랜딩페이지 빌더</div>
+              <div class="tl-msg">Stripe 결제 웹훅 버그 수정 — 유료 전환율 +12%</div>
+            </div>
+            <div class="tl-date">3D AGO</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <footer>
+      <div>
+        <div class="footer-logo">▶ &nbsp; Next Idea Lab</div>
+        <div style="font-family:'Space Mono',monospace;font-size:9px;color:var(--text-dim);margin-top:4px;letter-spacing:1px;">NEXT IDEA TO REALITY. INDEPENDENT BUILDER STUDIO.</div>
+      </div>
+      <div class="footer-copy">© 2025 NEXT IDEA LAB BY LUCIFER CO., LTD.</div>
+    </footer>
+  </main>
+
+  <!-- RIGHT PANEL -->
+  <div class="right-panel">
+
+    <div class="panel-block">
+      <div class="panel-label">Build Activity</div>
+      <div class="activity-grid">
+        <div class="act-cell"></div><div class="act-cell l1"></div><div class="act-cell l2"></div><div class="act-cell"></div><div class="act-cell l3"></div><div class="act-cell l1"></div><div class="act-cell l4"></div>
+        <div class="act-cell l2"></div><div class="act-cell l4"></div><div class="act-cell l1"></div><div class="act-cell l3"></div><div class="act-cell l4"></div><div class="act-cell l2"></div><div class="act-cell"></div>
+        <div class="act-cell l1"></div><div class="act-cell l3"></div><div class="act-cell l4"></div><div class="act-cell l2"></div><div class="act-cell l4"></div><div class="act-cell l1"></div><div class="act-cell l2"></div>
+        <div class="act-cell l3"></div><div class="act-cell l4"></div><div class="act-cell l4"></div><div class="act-cell l3"></div><div class="act-cell l2"></div><div class="act-cell l4"></div><div class="act-cell l1"></div>
+      </div>
+      <div class="act-label">이번 달 24일 활동</div>
+    </div>
+
+    <div class="panel-block">
+      <div class="panel-label">Stack Usage</div>
+      <div class="bar-row">
+        <div class="bar-head"><span class="bar-name">Next.js</span><span class="bar-pct">90%</span></div>
+        <div class="bar-track"><div class="bar-fill" style="width:90%"></div></div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-head"><span class="bar-name">Claude API</span><span class="bar-pct">75%</span></div>
+        <div class="bar-track"><div class="bar-fill" style="width:75%;background:var(--green)"></div></div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-head"><span class="bar-name">Supabase</span><span class="bar-pct">60%</span></div>
+        <div class="bar-track"><div class="bar-fill" style="width:60%;background:var(--blue)"></div></div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-head"><span class="bar-name">Vercel</span><span class="bar-pct">80%</span></div>
+        <div class="bar-track"><div class="bar-fill" style="width:80%;background:var(--amber)"></div></div>
+      </div>
+    </div>
+
+    <div class="panel-block">
+      <div class="panel-label">Revenue Tracker</div>
+      <div class="rev-row">
+        <span class="rev-name">랜딩페이지 빌더</span>
+        <span class="rev-val">₩320K</span>
+      </div>
+      <div class="rev-row">
+        <span class="rev-name">nextidealab</span>
+        <span class="rev-val zero">₩0</span>
+      </div>
+      <div class="rev-total">
+        <span class="rev-total-label">이번 달 합계</span>
+        <span class="rev-total-val">₩320K</span>
+      </div>
+    </div>
+
+    <div class="panel-block">
+      <div class="panel-label">Next Actions</div>
+      <div class="action-item">
+        <div class="action-bullet" style="background:var(--amber)"></div>
+        <div class="action-text">카피 생성기 베타 출시</div>
+      </div>
+      <div class="action-item">
+        <div class="action-bullet" style="background:var(--amber)"></div>
+        <div class="action-text">키워드 SaaS MVP 완성</div>
+      </div>
+      <div class="action-item">
+        <div class="action-bullet" style="background:var(--blue)"></div>
+        <div class="action-text">인플루언서 매칭 기획서 작성</div>
+      </div>
+      <div class="action-item">
+        <div class="action-bullet" style="background:var(--text-dim)"></div>
+        <div class="action-text">뉴스레터 자동화 재개 여부 결정</div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+</body>
+</html>

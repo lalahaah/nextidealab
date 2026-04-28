@@ -1,7 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { db } from '../../infrastructure/FirebaseConfig';
+import { collection, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
 
 export default function DevlogView() {
+  const [projects, setProjects] = useState([]);
+  const [logs, setLogs] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [activeStackFilter, setActiveStackFilter] = useState(null);
+
+  // Modal State
+  const [modalType, setModalType] = useState(null); // 'project' | 'log' | null
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Form State
+  const [projectForm, setProjectForm] = useState({
+    name: '', description: '', status: 'building', tags: '', stack: '', deployUrl: '', revenue: 0
+  });
+  const [logForm, setLogForm] = useState({
+    projectName: '', message: '', status: 'building'
+  });
 
   const COLORS = {
     bg: '#050a14',
@@ -27,9 +44,122 @@ export default function DevlogView() {
     grotesk: "'Space Grotesk', sans-serif",
   };
 
+  useEffect(() => {
+    // Projects Real-time Sync
+    const colProjects = collection(db, 'devlog_projects');
+    const unsubProjects = onSnapshot(colProjects, (snapshot) => {
+      const projectsData = snapshot.docs.map(doc => {
+        const data = doc.data();
+        const status = (data.status || 'idea').toUpperCase();
+
+        let badgeStyle = { border: '1px solid #4a6080', color: '#4a6080', backgroundColor: 'transparent' };
+        if (status === 'LIVE') badgeStyle = { backgroundColor: COLORS.cyan, color: '#000' };
+        else if (status === 'BUILDING') badgeStyle = { border: `1px solid ${COLORS.amber}`, color: COLORS.amber, backgroundColor: 'transparent' };
+        else if (status === 'IDEA') badgeStyle = { border: `1px solid ${COLORS.blue}`, color: COLORS.blue, backgroundColor: 'transparent' };
+
+        return {
+          id: doc.id,
+          name: data.name || 'Untitled',
+          desc: data.description || data.desc || '',
+          status: status,
+          type: (data.tags || []).join(' / ') || data.type || 'N/A',
+          stack: data.stack || [],
+          revenue: data.revenue || 0,
+          date: data.startedAt?.toDate ? data.startedAt.toDate().toLocaleDateString() : (data.date || ''),
+          action: status === 'IDEA' ? 'VIEW PLAN →' : 'VIEW LOG →',
+          statusClass: `s-${status.toLowerCase()}`,
+          badgeStyle: badgeStyle
+        };
+      });
+      setProjects(projectsData);
+      setLoading(false);
+    });
+
+    // Logs Real-time Sync
+    const colLogs = collection(db, 'devlog_logs');
+    const unsubLogs = onSnapshot(colLogs, (snapshot) => {
+      const logsData = snapshot.docs.map(doc => {
+        const data = doc.data();
+        const status = (data.status || 'idea').toUpperCase();
+        let color = COLORS.textDim;
+        if (status === 'LIVE') color = COLORS.green;
+        else if (status === 'BUILDING') color = COLORS.amber;
+        else if (status === 'IDEA') color = COLORS.blue;
+
+        return {
+          project: data.projectName || data.project || 'Unknown',
+          msg: data.message || data.msg || '',
+          date: data.loggedAt?.toDate ? formatTimeAgo(data.loggedAt.toDate()) : 'RECENT',
+          color: color
+        };
+      });
+      setLogs(logsData.slice(0, 10)); // 최대 10개만 표시
+    });
+
+    return () => {
+      unsubProjects();
+      unsubLogs();
+    };
+  }, []);
+
+  const handleAddProject = async (e) => {
+    e.preventDefault();
+    setIsSaving(true);
+    try {
+      await addDoc(collection(db, 'devlog_projects'), {
+        ...projectForm,
+        tags: projectForm.tags.split(',').map(t => t.trim()).filter(t => t),
+        stack: projectForm.stack.split(',').map(s => s.trim()).filter(s => s),
+        revenue: Number(projectForm.revenue),
+        startedAt: serverTimestamp(),
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+      setModalType(null);
+      setProjectForm({ name: '', description: '', status: 'building', tags: '', stack: '', deployUrl: '', revenue: 0 });
+    } catch (err) {
+      console.error(err);
+      alert('저장 실패: ' + err.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleAddLog = async (e) => {
+    e.preventDefault();
+    setIsSaving(true);
+    try {
+      await addDoc(collection(db, 'devlog_logs'), {
+        ...logForm,
+        loggedAt: serverTimestamp(),
+        createdAt: serverTimestamp()
+      });
+      setModalType(null);
+      setLogForm({ projectName: '', message: '', status: 'building' });
+    } catch (err) {
+      console.error(err);
+      alert('로그 저장 실패: ' + err.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  function formatTimeAgo(date) {
+    const now = new Date();
+    const diff = now - date;
+    const diffMin = Math.floor(diff / 60000);
+    const diffHr = Math.floor(diff / 3600000);
+    const diffDay = Math.floor(diff / 86400000);
+
+    if (diffMin < 60) return `${diffMin}M AGO`;
+    if (diffHr < 24) return `${diffHr}H AGO`;
+    if (diffDay < 1) return 'TODAY';
+    return `${diffDay}D AGO`;
+  }
+
   const filteredProjects = activeStackFilter
-    ? PROJECTS.filter(p => p.stack.includes(activeStackFilter))
-    : PROJECTS;
+    ? projects.filter(p => p.stack.includes(activeStackFilter))
+    : projects;
 
   return (
     <div className="min-h-screen pt-[56px]" style={{ backgroundColor: COLORS.bg, color: COLORS.text, fontFamily: FONTS.grotesk }}>
@@ -40,6 +170,8 @@ export default function DevlogView() {
         .s-building::after{ background: #ffb300; }
         .s-idea::after    { background: #4488ff; }
         .s-paused::after  { background: #4a6080; }
+        input, textarea, select { background: #0d1a2d !important; border: 1px solid #112240 !important; color: #e8f4ff !important; outline: none; }
+        input:focus, textarea:focus, select:focus { border-color: #00d4ff !important; }
       `}</style>
 
       <div className="flex min-h-[calc(100vh-56px)]">
@@ -54,14 +186,10 @@ export default function DevlogView() {
             <div className="text-[9px] uppercase tracking-[1.8px] px-5 pb-2 mb-2 border-b" style={{ color: COLORS.textDim, borderColor: COLORS.border, fontFamily: FONTS.mono }}>View</div>
             <div className="flex items-center justify-between px-5 py-2 cursor-pointer border-l-2 border-l-[#00d4ff] bg-[#00d4ff22] text-[#00d4ff]">
               <div className="flex items-center gap-2 text-xs"><span>⊞</span> All Projects</div>
-              <span className="text-[9px] px-1.5 py-0.5 rounded-full border border-[#00d4ff44] bg-[#00d4ff22]" style={{ fontFamily: FONTS.mono }}>10</span>
+              <span className="text-[9px] px-1.5 py-0.5 rounded-full border border-[#00d4ff44] bg-[#00d4ff22]" style={{ fontFamily: FONTS.mono }}>{projects.length}</span>
             </div>
             <div className="flex items-center justify-between px-5 py-2 cursor-pointer border-l-2 border-transparent text-[#4a6080] hover:text-[#7a9ab8] hover:bg-[#0b1525]">
               <div className="flex items-center gap-2 text-xs"><span>◎</span> Timeline</div>
-            </div>
-            <div className="flex items-center justify-between px-5 py-2 cursor-pointer border-l-2 border-transparent text-[#4a6080] hover:text-[#7a9ab8] hover:bg-[#0b1525]">
-              <div className="flex items-center gap-2 text-xs"><span>↗</span> Live Only</div>
-              <span className="text-[9px] px-1.5 py-0.5 rounded-full border border-[#112240] bg-[#0b1525]" style={{ fontFamily: FONTS.mono }}>2</span>
             </div>
           </div>
 
@@ -69,10 +197,10 @@ export default function DevlogView() {
           <div className="mb-7">
             <div className="text-[9px] uppercase tracking-[1.8px] px-5 pb-2 mb-2 border-b" style={{ color: COLORS.textDim, borderColor: COLORS.border, fontFamily: FONTS.mono }}>Status</div>
             {[
-              { label: 'Live', color: COLORS.green, count: 2 },
-              { label: 'Building', color: COLORS.amber, count: 3 },
-              { label: 'Idea', color: COLORS.blue, count: 4 },
-              { label: 'Paused', color: COLORS.textDim, count: 1 },
+              { label: 'Live', color: COLORS.green, count: projects.filter(p => p.status === 'LIVE').length },
+              { label: 'Building', color: COLORS.amber, count: projects.filter(p => p.status === 'BUILDING').length },
+              { label: 'Idea', color: COLORS.blue, count: projects.filter(p => p.status === 'IDEA').length },
+              { label: 'Paused', color: COLORS.textDim, count: projects.filter(p => p.status === 'PAUSED').length },
             ].map(s => (
               <div key={s.label} className="flex items-center justify-between px-5 py-2 cursor-pointer border-l-2 border-transparent text-[#4a6080] hover:text-[#7a9ab8] hover:bg-[#0b1525]">
                 <div className="flex items-center gap-2 text-xs">
@@ -87,7 +215,7 @@ export default function DevlogView() {
           {/* STACK */}
           <div>
             <div className="text-[9px] uppercase tracking-[1.8px] px-5 pb-2 mb-2 border-b" style={{ color: COLORS.textDim, borderColor: COLORS.border, fontFamily: FONTS.mono }}>Stack</div>
-            {['Next.js', 'Supabase', 'Claude API', 'Vercel', 'FastAPI', 'Stripe'].map(tag => (
+            {Array.from(new Set(projects.flatMap(p => p.stack))).slice(0, 15).map(tag => (
               <span
                 key={tag}
                 className="block px-5 py-1.5 text-[10px] cursor-pointer transition-all"
@@ -108,24 +236,42 @@ export default function DevlogView() {
         <main className="flex-1 px-10 py-9 overflow-y-auto min-w-0">
 
           {/* Header */}
-          <div className="mb-9">
-            <div className="text-[10px] mb-3 tracking-wider" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>
-              Home › Projects › <span style={{ color: COLORS.cyan }}>DEVLOG</span>
+          <div className="mb-9 flex justify-between items-end">
+            <div>
+              <div className="text-[10px] mb-3 tracking-wider" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>
+                Home › Projects › <span style={{ color: COLORS.cyan }}>DEVLOG</span>
+              </div>
+              <div className="text-4xl font-bold tracking-tight mb-1" style={{ color: COLORS.white }}>
+                Build Log.<span style={{ color: COLORS.cyan }}>_</span>
+              </div>
+              <div className="text-[10px] uppercase tracking-[1.5px]" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>
+                실시간 빌드 아카이브 &nbsp;/&nbsp; 개발 대시보드
+              </div>
             </div>
-            <div className="text-4xl font-bold tracking-tight mb-1" style={{ color: COLORS.white }}>
-              Build Log.<span style={{ color: COLORS.cyan }}>_</span>
-            </div>
-            <div className="text-[10px] uppercase tracking-[1.5px]" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>
-              실시간 빌드 아카이브 &nbsp;/&nbsp; 개발 대시보드
+            <div className="flex gap-2">
+              <button 
+                onClick={() => setModalType('log')}
+                className="text-[9px] uppercase tracking-wider px-4 py-2 rounded font-bold transition-all border border-[#112240] hover:border-[#1a3060]"
+                style={{ color: COLORS.cyan, fontFamily: FONTS.mono }}
+              >
+                + ADD LOG
+              </button>
+              <button 
+                onClick={() => setModalType('project')}
+                className="text-[9px] uppercase tracking-wider px-4 py-2 rounded font-bold transition-all"
+                style={{ backgroundColor: COLORS.cyan, color: '#000', fontFamily: FONTS.mono }}
+              >
+                + ADD PROJECT
+              </button>
             </div>
           </div>
 
-          {/* Stats */}
+          {/* Project Cards Grid & Timeline... (rest of the main content remains same) */}
           <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 mb-8">
             {[
-              { label: 'Total Projects', val: '10', sub: '+2 this month', color: COLORS.cyan, textColor: COLORS.white },
-              { label: 'Live', val: '2', sub: '배포 완료', color: COLORS.green, textColor: COLORS.green },
-              { label: 'In Progress', val: '3', sub: '빌딩 중', color: COLORS.amber, textColor: COLORS.amber },
+              { label: 'Total Projects', val: projects.length.toString(), sub: 'In Archive', color: COLORS.cyan, textColor: COLORS.white },
+              { label: 'Live', val: projects.filter(p => p.status === 'LIVE').length.toString(), sub: '배포 완료', color: COLORS.green, textColor: COLORS.green },
+              { label: 'In Progress', val: projects.filter(p => p.status === 'BUILDING').length.toString(), sub: '빌딩 중', color: COLORS.amber, textColor: COLORS.amber },
               { label: 'Build Streak', val: '12d', sub: '연속 빌드 🔥', color: '#a78bfa', textColor: '#a78bfa' },
             ].map(stat => (
               <div key={stat.label} className="relative p-4 rounded-lg border overflow-hidden transition-all hover:border-[#1a3060]" style={{ backgroundColor: COLORS.card, borderColor: COLORS.border }}>
@@ -137,37 +283,18 @@ export default function DevlogView() {
             ))}
           </div>
 
-          {/* Filter */}
-          <div className="flex flex-wrap items-center gap-2 mb-5">
-            <div className="text-[9px] uppercase tracking-wider px-3.5 py-1.5 rounded border font-bold cursor-pointer" style={{ backgroundColor: COLORS.cyan, borderColor: COLORS.cyan, color: '#000', fontFamily: FONTS.mono }}>ALL</div>
-            {['AI', 'WEB', 'DATA SCIENCE', 'DESIGN'].map(tag => (
-              <div key={tag} className="text-[9px] uppercase tracking-wider px-3.5 py-1.5 rounded border cursor-pointer hover:border-[#1a3060] hover:text-[#7a9ab8] transition-all" style={{ color: COLORS.textDim, borderColor: COLORS.border, fontFamily: FONTS.mono }}>{tag}</div>
-            ))}
-            <div className="flex-1 max-w-[300px] relative ml-auto">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs" style={{ color: COLORS.textDim }}>⌕</span>
-              <input
-                className="w-full pl-8 pr-3 py-1.5 text-xs rounded-md border outline-none transition-all"
-                placeholder="Search..."
-                style={{ backgroundColor: COLORS.card, borderColor: COLORS.border, color: COLORS.textMid, fontFamily: FONTS.grotesk }}
-              />
-            </div>
-          </div>
-
-          {/* Projects Label */}
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-[10px] uppercase tracking-[2px]" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>Projects</span>
-            <span className="text-[9px]" style={{ color: COLORS.cyan, fontFamily: FONTS.mono }}>{filteredProjects.length} total</span>
-          </div>
-
           {/* Project Cards */}
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-3.5 mb-10">
-            {filteredProjects.map(p => (
+            {loading ? (
+              <div className="col-span-full py-20 text-center text-sm" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>Loading...</div>
+            ) : filteredProjects.length === 0 ? (
+              <div className="col-span-full py-20 text-center text-sm" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>아직 프로젝트가 없습니다</div>
+            ) : filteredProjects.map(p => (
               <div
-                key={p.name}
+                key={p.id}
                 className={`relative group rounded-xl border overflow-hidden transition-all hover:-translate-y-0.5 hover:border-[#1a3060] project-card-custom ${p.statusClass}`}
                 style={{ backgroundColor: COLORS.card, borderColor: COLORS.border }}
               >
-                {/* 카드 내부 패딩 — pt-6으로 상단 컬러 라인과 간격 확보 */}
                 <div style={{ padding: '20px 24px 20px 24px', paddingTop: '24px' }}>
                   <div className="flex items-start justify-between mb-1">
                     <div className="flex items-center gap-1.5 flex-wrap">
@@ -199,10 +326,11 @@ export default function DevlogView() {
           <div className="mb-10">
             <div className="flex items-center justify-between mb-4">
               <span className="text-[10px] uppercase tracking-[2px]" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>Recent Build Log</span>
-              <span className="text-[9px] cursor-pointer hover:underline" style={{ color: COLORS.cyan, fontFamily: FONTS.mono }}>View all →</span>
             </div>
             <div className="relative pl-6 space-y-2.5 before:content-[''] before:absolute before:left-[7px] before:top-2 before:bottom-0 before:w-[1px] before:bg-gradient-to-b before:from-[#00d4ff44] before:to-transparent">
-              {LOGS.map((log, i) => (
+              {logs.length === 0 ? (
+                <div className="text-xs py-5" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>No logs found.</div>
+              ) : logs.map((log, i) => (
                 <div key={i} className="relative">
                   <div className="absolute -left-[19px] top-3.5 w-2 h-2 rounded-full border-2" style={{ backgroundColor: log.color, borderColor: COLORS.bg }}></div>
                   <div className="flex items-center justify-between p-3 rounded-lg border transition-all hover:border-[#1a3060]" style={{ backgroundColor: COLORS.card, borderColor: COLORS.border }}>
@@ -216,15 +344,6 @@ export default function DevlogView() {
               ))}
             </div>
           </div>
-
-          {/* Footer */}
-          <footer className="mt-5 pt-6 border-t flex justify-between items-center" style={{ borderColor: COLORS.border }}>
-            <div>
-              <div className="text-[9px] uppercase tracking-[2px]" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>▶ &nbsp; Next Idea Lab</div>
-              <div className="text-[9px] uppercase tracking-[1px] mt-1" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>NEXT IDEA TO REALITY. INDEPENDENT BUILDER STUDIO.</div>
-            </div>
-            <div className="text-[9px]" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>© 2025 NEXT IDEA LAB BY LUCIFER CO., LTD.</div>
-          </footer>
         </main>
 
         {/* ── RIGHT PANEL ── */}
@@ -232,146 +351,93 @@ export default function DevlogView() {
           className="hidden xl:flex flex-col w-[230px] shrink-0 border-l sticky top-[56px] h-[calc(100vh-56px)]"
           style={{ backgroundColor: COLORS.bg2, borderColor: COLORS.border }}
         >
-          {/* 스크롤 영역 — px를 inline style로 정확히 지정 */}
           <div className="flex-1 overflow-y-auto overflow-x-hidden" style={{ padding: '28px 18px' }}>
-
-            {/* Build Activity */}
-            <div className="mb-7">
-              <div className="text-[9px] uppercase tracking-[1.8px] pb-2 mb-3 border-b" style={{ color: COLORS.textDim, borderColor: COLORS.border, fontFamily: FONTS.mono }}>Build Activity</div>
-              <div className="grid grid-cols-7 gap-1 mb-1.5" style={{ width: '100%' }}>
-                {[0, 1, 2, 0, 3, 1, 4, 2, 4, 1, 3, 4, 2, 0, 1, 3, 4, 2, 4, 1, 2, 3, 4, 4, 3, 2, 4, 1].map((level, i) => {
-                  const bg = ['#112240', '#00d4ff18', '#00d4ff40', '#00d4ff70', '#00d4ff'][level];
-                  return <div key={i} style={{ height: '14px', borderRadius: '2px', backgroundColor: bg }}></div>;
-                })}
-              </div>
-              <div className="text-[9px]" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>이번 달 24일 활동</div>
-            </div>
-
-            {/* Stack Usage */}
-            <div className="mb-7">
-              <div className="text-[9px] uppercase tracking-[1.8px] pb-2 mb-3 border-b" style={{ color: COLORS.textDim, borderColor: COLORS.border, fontFamily: FONTS.mono }}>Stack Usage</div>
-              <div className="space-y-3">
-                {[
-                  { name: 'Next.js', pct: 90, color: COLORS.cyan },
-                  { name: 'Claude API', pct: 75, color: COLORS.green },
-                  { name: 'Supabase', pct: 60, color: COLORS.blue },
-                  { name: 'Vercel', pct: 80, color: COLORS.amber },
-                ].map(s => (
-                  <div key={s.name}>
-                    <div className="flex justify-between items-center mb-1.5">
-                      <span className="text-[10px] truncate" style={{ color: COLORS.textMid, maxWidth: '120px' }}>{s.name}</span>
-                      <span className="text-[9px] ml-1 shrink-0" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>{s.pct}%</span>
-                    </div>
-                    <div style={{ height: '3px', borderRadius: '2px', backgroundColor: '#112240', width: '100%', overflow: 'hidden' }}>
-                      <div style={{ height: '100%', borderRadius: '2px', backgroundColor: s.color, width: `${s.pct}%` }}></div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
             {/* Revenue Tracker */}
             <div className="mb-7">
               <div className="text-[9px] uppercase tracking-[1.8px] pb-2 mb-3 border-b" style={{ color: COLORS.textDim, borderColor: COLORS.border, fontFamily: FONTS.mono }}>Revenue Tracker</div>
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-[10px] truncate" style={{ color: COLORS.textDim, maxWidth: '130px' }}>랜딩페이지 빌더</span>
-                <span className="text-[10px] font-bold shrink-0" style={{ color: COLORS.green, fontFamily: FONTS.mono }}>₩320K</span>
-              </div>
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-[10px] truncate" style={{ color: COLORS.textDim }}>nextidealab</span>
-                <span className="text-[10px] font-bold shrink-0" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>₩0</span>
-              </div>
+              {projects.filter(p => (p.revenue || 0) > 0).length === 0 ? (
+                <div className="text-[10px]" style={{ color: COLORS.textDim }}>수익 발생 프로젝트 없음</div>
+              ) : projects.filter(p => (p.revenue || 0) > 0).map(p => (
+                <div key={p.id} className="flex justify-between items-center mb-2">
+                  <span className="text-[10px] truncate" style={{ color: COLORS.textMid, maxWidth: '120px' }}>{p.name}</span>
+                  <span className="text-[10px] font-bold shrink-0" style={{ color: COLORS.green, fontFamily: FONTS.mono }}>₩{(p.revenue / 1000).toFixed(0)}K</span>
+                </div>
+              ))}
               <div className="mt-2 pt-2 border-t flex justify-between items-center" style={{ borderColor: COLORS.border }}>
-                <span className="text-[10px]" style={{ color: COLORS.textDim }}>이번 달 합계</span>
-                <span className="text-[11px] font-bold shrink-0" style={{ color: COLORS.green, fontFamily: FONTS.mono }}>₩320K</span>
+                <span className="text-[10px]" style={{ color: COLORS.textDim }}>누적 합계</span>
+                <span className="text-[11px] font-bold shrink-0" style={{ color: COLORS.green, fontFamily: FONTS.mono }}>₩{(projects.reduce((acc, p) => acc + (p.revenue || 0), 0) / 1000).toFixed(0)}K</span>
               </div>
             </div>
 
             {/* Next Actions */}
             <div>
               <div className="text-[9px] uppercase tracking-[1.8px] pb-2 mb-3 border-b" style={{ color: COLORS.textDim, borderColor: COLORS.border, fontFamily: FONTS.mono }}>Next Actions</div>
-              {[
-                { color: COLORS.amber, text: '카피 생성기 베타 출시' },
-                { color: COLORS.amber, text: '키워드 SaaS MVP 완성' },
-                { color: COLORS.blue, text: '인플루언서 매칭 기획서 작성' },
-                { color: COLORS.textDim, text: '뉴스레터 자동화 재개 여부 결정' },
-              ].map((a, i) => (
+              {projects.filter(p => p.status === 'BUILDING').slice(0, 4).map((p, i) => (
                 <div key={i} className="flex gap-2.5 items-start mb-2.5">
-                  <div className="w-1 h-1 rounded-full mt-[5px] shrink-0" style={{ backgroundColor: a.color }}></div>
-                  <div className="text-[10px] leading-relaxed" style={{ color: COLORS.textDim }}>{a.text}</div>
+                  <div className="w-1 h-1 rounded-full mt-[5px] shrink-0" style={{ backgroundColor: COLORS.amber }}></div>
+                  <div className="text-[10px] leading-relaxed" style={{ color: COLORS.textDim }}>{p.name} 기능 고도화</div>
                 </div>
               ))}
             </div>
-
           </div>
         </aside>
 
       </div>
+
+      {/* ── ADMIN MODAL ── */}
+      {modalType && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-xl border p-6 shadow-2xl" style={{ backgroundColor: COLORS.card, borderColor: COLORS.border }}>
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-lg font-bold" style={{ color: COLORS.cyan, fontFamily: FONTS.mono }}>
+                {modalType === 'project' ? '＋ NEW PROJECT' : '＋ NEW LOG'}
+              </h3>
+              <button onClick={() => setModalType(null)} style={{ color: COLORS.textDim }}>✕</button>
+            </div>
+
+            {modalType === 'project' ? (
+              <form onSubmit={handleAddProject} className="space-y-4">
+                <input required placeholder="프로젝트명" className="w-full p-2.5 rounded text-xs" value={projectForm.name} onChange={e => setProjectForm({...projectForm, name: e.target.value})} />
+                <textarea required placeholder="설명" className="w-full p-2.5 rounded text-xs h-20" value={projectForm.description} onChange={e => setProjectForm({...projectForm, description: e.target.value})} />
+                <div className="grid grid-cols-2 gap-3">
+                  <select className="p-2.5 rounded text-xs" value={projectForm.status} onChange={e => setProjectForm({...projectForm, status: e.target.value})}>
+                    <option value="live">LIVE</option>
+                    <option value="building">BUILDING</option>
+                    <option value="idea">IDEA</option>
+                    <option value="paused">PAUSED</option>
+                  </select>
+                  <input type="number" placeholder="수익 (₩)" className="p-2.5 rounded text-xs" value={projectForm.revenue} onChange={e => setProjectForm({...projectForm, revenue: e.target.value})} />
+                </div>
+                <input placeholder="태그 (쉼표로 구분: AI, WEB...)" className="w-full p-2.5 rounded text-xs" value={projectForm.tags} onChange={e => setProjectForm({...projectForm, tags: e.target.value})} />
+                <input placeholder="스택 (쉼표로 구분: Next.js, OpenAI...)" className="w-full p-2.5 rounded text-xs" value={projectForm.stack} onChange={e => setProjectForm({...projectForm, stack: e.target.value})} />
+                <input placeholder="배포 URL (https://...)" className="w-full p-2.5 rounded text-xs" value={projectForm.deployUrl} onChange={e => setProjectForm({...projectForm, deployUrl: e.target.value})} />
+                <button disabled={isSaving} className="w-full py-3 rounded font-bold transition-all text-sm mt-2" style={{ backgroundColor: COLORS.cyan, color: '#000', fontFamily: FONTS.mono }}>
+                  {isSaving ? 'SAVING...' : 'SAVE PROJECT'}
+                </button>
+              </form>
+            ) : (
+              <form onSubmit={handleAddLog} className="space-y-4">
+                <select required className="w-full p-2.5 rounded text-xs" value={logForm.projectName} onChange={e => setLogForm({...logForm, projectName: e.target.value})}>
+                  <option value="">프로젝트 선택</option>
+                  {projects.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+                </select>
+                <textarea required placeholder="로그 메시지" className="w-full p-2.5 rounded text-xs h-24" value={logForm.message} onChange={e => setLogForm({...logForm, message: e.target.value})} />
+                <select className="w-full p-2.5 rounded text-xs" value={logForm.status} onChange={e => setLogForm({...logForm, status: e.target.value})}>
+                  <option value="building">BUILDING</option>
+                  <option value="live">LIVE</option>
+                  <option value="idea">IDEA</option>
+                </select>
+                <button disabled={isSaving} className="w-full py-3 rounded font-bold transition-all text-sm mt-2" style={{ backgroundColor: COLORS.cyan, color: '#000', fontFamily: FONTS.mono }}>
+                  {isSaving ? 'SAVING...' : 'SAVE LOG'}
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-/* ── DATA ── */
-const PROJECTS = [
-  {
-    name: 'nextidealab.app',
-    desc: '프로젝트 허브 & 블로그. 바이브코딩으로 직접 구축한 메인 플랫폼.',
-    status: 'LIVE', type: 'WEB / AI',
-    stack: ['Next.js', 'Vercel', 'MDX'],
-    date: '2025.03.10', action: 'VIEW LOG →',
-    statusClass: 's-live',
-    badgeStyle: { backgroundColor: '#00d4ff', color: '#000' },
-  },
-  {
-    name: 'AI 광고 카피 생성기',
-    desc: 'Claude API로 광고 소재 자동 생성. 내부 툴 → SaaS 전환 예정.',
-    status: 'BUILDING', type: 'AI / WEB',
-    stack: ['Claude API', 'Next.js', 'Supabase'],
-    date: '2025.04.02', action: 'VIEW LOG →',
-    statusClass: 's-building',
-    badgeStyle: { border: '1px solid #ffb300', color: '#ffb300', backgroundColor: 'transparent' },
-  },
-  {
-    name: '랜딩페이지 빌더',
-    desc: '광고대행사 클라이언트용 랜딩 자동 생성. 유료 플랜 운영 중.',
-    status: 'LIVE', type: 'WEB / DESIGN',
-    stack: ['Next.js', 'Stripe', 'Supabase'],
-    date: '2025.02.15', action: 'VIEW LOG →',
-    statusClass: 's-live',
-    badgeStyle: { backgroundColor: '#00d4ff', color: '#000' },
-  },
-  {
-    name: '키워드 리서치 SaaS',
-    desc: 'SEO 키워드 자동 분석 + 경쟁도 체크. MVP 개발 60% 완료.',
-    status: 'BUILDING', type: 'AI / DATA SCIENCE',
-    stack: ['Python', 'FastAPI', 'Claude API'],
-    date: '2025.04.10', action: 'VIEW LOG →',
-    statusClass: 's-building',
-    badgeStyle: { border: '1px solid #ffb300', color: '#ffb300', backgroundColor: 'transparent' },
-  },
-  {
-    name: 'AI 인플루언서 매칭',
-    desc: '광고주 ↔ 인플루언서 AI 매칭. 라운드미디어 레버리지 가능.',
-    status: 'IDEA', type: 'AI / WEB',
-    stack: ['아이디어', 'Claude API'],
-    date: '2025.04.18', action: 'VIEW PLAN →',
-    statusClass: 's-idea',
-    badgeStyle: { border: '1px solid #4488ff', color: '#4488ff', backgroundColor: 'transparent' },
-  },
-  {
-    name: '뉴스레터 자동화',
-    desc: 'AI 뉴스레터 큐레이션 자동화. 우선순위 밀림으로 일시 중단.',
-    status: 'PAUSED', type: 'WEB',
-    stack: ['Next.js', 'Resend'],
-    date: '2025.03.20', action: 'VIEW LOG →',
-    statusClass: 's-paused',
-    badgeStyle: { border: '1px solid #4a6080', color: '#4a6080', backgroundColor: 'transparent' },
-  },
-];
-
-const LOGS = [
-  { project: 'nextidealab.app', msg: '✦ /devlog 페이지 추가 완료 — 대시보드 MVP 배포', date: 'TODAY', color: '#00ff88' },
-  { project: 'AI 광고 카피 생성기', msg: 'Supabase Auth 연동, 토큰 카운팅 로직 추가', date: '1D AGO', color: '#ffb300' },
-  { project: '키워드 리서치 SaaS', msg: 'Claude API 프롬프트 최적화, 응답속도 40% 개선', date: '2D AGO', color: '#ffb300' },
-  { project: '랜딩페이지 빌더', msg: 'Stripe 결제 웹훅 버그 수정 — 유료 전환율 +12%', date: '3D AGO', color: '#00ff88' },
-];
+const PROJECTS = [];
+const LOGS = [];

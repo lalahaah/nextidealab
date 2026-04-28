@@ -5,11 +5,20 @@ import fs from 'fs';
 import path from 'path';
 
 // .env 파일에서 환경 변수 추출 (Vite 환경 변수 대응)
-const envPath = path.resolve(process.cwd(), '.env');
+const envPath = fs.existsSync(path.resolve(process.cwd(), '.env')) 
+  ? path.resolve(process.cwd(), '.env')
+  : path.resolve(process.cwd(), '.env.local');
+
+if (!fs.existsSync(envPath)) {
+  console.error("No .env or .env.local file found.");
+  process.exit(1);
+}
+
 const envContent = fs.readFileSync(envPath, 'utf8');
 const env = {};
 envContent.split('\n').forEach(line => {
-  const [key, value] = line.split('=');
+  const [key, ...valueParts] = line.split('=');
+  const value = valueParts.join('=');
   if (key && value) env[key.trim()] = value.trim().replace(/^["']|["']$/g, '');
 });
 
