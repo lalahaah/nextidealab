@@ -17,8 +17,21 @@
 - 디자인은 기존 nextidealab.app의 디자인 시스템을 그대로 적용한다
 
 **공개/비공개 원칙:**
-- 누구나 볼 수 있음 (공개): 프로젝트 카드, 진행률, Next Action, 빌드 로그, 스택 현황
-- Admin 로그인 후에만 보임 (비공개): 수익 트래커, 목표 MRR, 아이디어 보관함, ADD/EDIT 기능
+
+| 항목 | 공개 여부 | 비고 |
+|---|---|---|
+| 프로젝트 카드 + 진행률 | ✅ 공개 | |
+| 카드의 Next Action (`→ NEXT ...`) | ✅ 공개 | 빌더 브랜딩 역할 |
+| 빌드 로그 타임라인 + 태그 | ✅ 공개 | |
+| GitHub / 배포 URL 링크 | ✅ 공개 | |
+| BUILD ACTIVITY 캘린더 | ✅ 공개 | |
+| STACK USAGE 바 | ✅ 공개 | |
+| REVENUE TRACKER | 🔒 Admin | 수익 노출 위험 |
+| REVENUE HISTORY 차트 | 🔒 Admin | 수익 노출 위험 |
+| 우측 패널 NEXT ACTIONS | 🔒 Admin | 전체 할 일 목록 노출 위험 |
+| IDEA VAULT | 🔒 Admin | 미공개 아이디어 보호 |
+| MRR 달성률 | 🔒 Admin | 수익 노출 위험 |
+| ADD/EDIT/DELETE 기능 | 🔒 Admin | |
 
 ---
 
@@ -30,7 +43,7 @@
 | Language | JavaScript (JSX) |
 | Styling | Tailwind CSS + Inline Styles |
 | Backend | Firebase Firestore + Firebase Auth |
-| 배포 | Vercel |
+| 배포 | Vercel (GitHub 푸시 시 자동 배포) |
 | 폰트 | Space Mono, Space Grotesk |
 
 ---
@@ -38,31 +51,37 @@
 ## 2. 디자인 시스템 (절대 변경하지 말 것)
 
 ```css
-/* 컬러 팔레트 */
---bg:        #050a14   /* 메인 배경 */
---bg2:       #080f1c   /* 사이드바/패널 배경 */
---bg3:       #0b1525   /* 카드/아이템 hover 배경 */
---card:      #0d1a2d   /* 카드 배경 */
---border:    #112240   /* 기본 border */
---border2:   #1a3060   /* hover border */
---cyan:      #00d4ff   /* 주 액센트 */
---text:      #c8d8f0   /* 본문 텍스트 */
---text-dim:  #4a6080   /* 보조 텍스트 */
---text-mid:  #7a9ab8   /* 중간 텍스트 */
---white:     #e8f4ff   /* 헤딩 */
---green:     #00ff88   /* LIVE 상태 */
---amber:     #ffb300   /* BUILDING 상태 */
---blue:      #4488ff   /* IDEA 상태 */
+--bg:        #050a14
+--bg2:       #080f1c
+--bg3:       #0b1525
+--card:      #0d1a2d
+--border:    #112240
+--border2:   #1a3060
+--cyan:      #00d4ff
+--text:      #c8d8f0
+--text-dim:  #4a6080
+--text-mid:  #7a9ab8
+--white:     #e8f4ff
+--green:     #00ff88
+--amber:     #ffb300
+--blue:      #4488ff
+--red:       #ff4466
 
-/* 폰트 */
 font-heading: 'Space Grotesk', sans-serif
-font-mono:    'Space Mono', monospace   /* 뱃지, 라벨, 날짜, 태그, 스탯 전용 */
+font-mono:    'Space Mono', monospace
 
 /* 뱃지 패턴 */
 LIVE     → bg: #00d4ff, color: #000
 BUILDING → border: #ffb300, color: #ffb300
 IDEA     → border: #4488ff, color: #4488ff
 PAUSED   → border: #4a6080, color: #4a6080
+
+/* 로그 태그 색상 */
+기능추가 → color: #00d4ff, border: #00d4ff44
+버그수정 → color: #ff4466, border: #ff446644
+배포     → color: #00ff88, border: #00ff8844
+기획     → color: #ffb300, border: #ffb30044
+기타     → color: #4a6080, border: #4a608044
 ```
 
 ---
@@ -73,21 +92,19 @@ PAUSED   → border: #4a6080, color: #4a6080
 
 ```js
 {
-  id: string,                    // auto-generated
-  name: string,                  // "AI 광고 카피 생성기"
-  description: string,           // 한 줄 설명
+  id: string,
+  name: string,
+  description: string,
   status: "live" | "building" | "idea" | "paused",
-  tags: string[],                // ["AI", "WEB"]
-  stack: string[],               // ["Claude API", "Next.js"]
-  deployUrl: string | null,      // 배포 URL
-  githubUrl: string | null,      // GitHub URL (신규)
-  nextAction: string | null,     // "다음 할 것 한 줄" (신규)
-  progress: number,              // 진행률 0~100 (신규)
+  tags: string[],
+  stack: string[],
+  deployUrl: string | null,
+  githubUrl: string | null,
+  nextAction: string | null,     // 카드에 공개 표시
+  progress: number,              // 0~100, 수동 입력
   revenue: number,               // 월 수익 (원)
-  revenueHistory: [              // 월별 수익 히스토리 (신규, Admin 전용)
-    { month: string, amount: number }
-  ],
-  targetMRR: number | null,      // 목표 MRR (신규, Admin 전용)
+  revenueHistory: [{ month: string, amount: number }],
+  targetMRR: number | null,
   startedAt: Timestamp,
   createdAt: Timestamp,
   updatedAt: Timestamp
@@ -99,24 +116,24 @@ PAUSED   → border: #4a6080, color: #4a6080
 ```js
 {
   id: string,
-  projectId: string,
-  projectName: string,
+  projectId: string,             // Firestore document ID
+  projectName: string,           // 비정규화 (조회 편의)
   message: string,
-  tag: "기능추가" | "버그수정" | "배포" | "기획" | "기타",  // 신규
+  tag: "기능추가" | "버그수정" | "배포" | "기획" | "기타",
   status: "live" | "building" | "idea" | "paused",
   loggedAt: Timestamp,
   createdAt: Timestamp
 }
 ```
 
-### Collection: `devlog_ideas`  ← 신규 (Admin 전용)
+### Collection: `devlog_ideas` (Admin 전용)
 
 ```js
 {
   id: string,
-  title: string,               // 아이디어 제목
-  description: string,         // 상세 내용
-  potential: "high" | "mid" | "low",  // 가능성
+  title: string,
+  description: string,
+  potential: "high" | "mid" | "low",
   tags: string[],
   createdAt: Timestamp
 }
@@ -124,116 +141,139 @@ PAUSED   → border: #4a6080, color: #4a6080
 
 ---
 
-## 4. 기능 로드맵
+## 4. Firebase 보안 규칙
 
-### ✅ 완료
+```javascript
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 기존 사이트 데이터 — 읽기 공개
+    match /artifacts/{appId}/public/data/{collection}/{docId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // devlog 프로젝트 — 읽기 공개
+    match /devlog_projects/{docId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // devlog 로그 — 읽기 공개
+    match /devlog_logs/{docId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // devlog 아이디어 — Admin 전용
+    match /devlog_ideas/{docId} {
+      allow read, write: if request.auth != null;
+    }
+
+    // 나머지 전체 차단
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+```
+
+---
+
+## 5. 기능 로드맵
+
+### ✅ 완료 (2026-04-28)
 
 | 기능 | 공개 여부 |
 |---|---|
-| Firestore 실시간 연동 | - |
+| Firestore 실시간 연동 (onSnapshot) | - |
 | 프로젝트 카드 그리드 | ✅ 공개 |
+| 카드 상태별 컬러 라인 | ✅ 공개 |
+| 진행률 progress bar | ✅ 공개 |
+| 카드 Next Action 1줄 | ✅ 공개 |
+| GitHub / 배포 URL 링크 | ✅ 공개 |
 | 빌드 로그 타임라인 | ✅ 공개 |
+| 로그 태그 뱃지 (기능추가/버그수정/배포/기획/기타) | ✅ 공개 |
 | 스택 필터 / 상태 필터 | ✅ 공개 |
-| Admin Firebase Auth 로그인 | - |
+| BUILD ACTIVITY 캘린더 | ✅ 공개 |
+| STACK USAGE 바 | ✅ 공개 |
+| VIEW LOG 모달 (프로젝트별 로그) | ✅ 공개 |
+| Admin Firebase Auth 로그인 (숨겨진 ADMIN 버튼) | - |
 | ADD PROJECT 모달 | 🔒 Admin |
+| EDIT PROJECT 모달 | 🔒 Admin |
 | ADD LOG 모달 | 🔒 Admin |
-| Vercel 배포 | - |
-| 프로젝트별 Next Action 1줄 | ✅ 공개 |
-| GitHub / 문서 링크 | ✅ 공개 |
-| 진행률 표시 (progress %) | ✅ 공개 |
-| 월별 수익 히스토리 차트 | 🔒 Admin |
+| 타임라인 로그 수정 / 삭제 | 🔒 Admin |
+| VIEW LOG 내 로그 수정 / 삭제 | 🔒 Admin |
+| REVENUE TRACKER (실시간 합산) | 🔒 Admin |
+| REVENUE HISTORY SVG 라인 차트 | 🔒 Admin |
 | 목표 MRR / 달성률 | 🔒 Admin |
-| 빌드 로그 태그 분류 | ✅ 공개 |
-| 아이디어 보관함 | 🔒 Admin |
+| 우측 패널 NEXT ACTIONS | 🔒 Admin |
+| IDEA VAULT (추가/삭제) | 🔒 Admin |
+| 랜딩페이지 Firebase DB 연동 수정 | - |
+| 전체 사이트 텍스트 사이즈 개선 | - |
+| Vercel 자동 배포 (GitHub 푸시 연동) | - |
 
 ---
 
-### 🔲 우선순위 4 — 시스템 고도화 (다음 작업)
-
-| 기능 | 공개 여부 | 설명 |
-|---|---|---|
-| 로그 필터링 (태그별) | ✅ 공개 | 타임라인 상단 태그 필터 버튼 |
-| 프로젝트 삭제 기능 | 🔒 Admin | 아카이브 정리를 위한 삭제 기능 |
-
----
-
-## 5. 파일 구조
+## 6. 파일 구조
 
 ```
 src/
 ├── presentation/
-│   └── views/
-│       └── DevlogView.jsx      ← 메인 (모든 로직 통합)
+│   ├── views/
+│   │   └── DevlogView.jsx          ← Devlog 메인 (모든 로직 통합)
+│   └── components/
+│       └── DataItems.jsx           ← 랜딩페이지 카드 컴포넌트
 └── infrastructure/
-    └── FirebaseConfig.js       ← db, auth export
+    └── FirebaseConfig.js           ← db, auth export
 ```
 
-> ⚠️ 현재 모든 로직이 DevlogView.jsx에 통합되어 있음.
-> 추후 컴포넌트 분리는 기능 구현 완료 후 진행.
+> ⚠️ DevlogView.jsx에 모든 로직 통합되어 있음.
 
 ---
 
-## 6. 하지 말아야 할 것
+## 7. 하지 말아야 할 것
 
-- ❌ 기존 컴포넌트/파일 무단 수정 (라우터, Header 제외)
-- ❌ 새 npm 패키지 추가 (기존 것으로 해결)
+- ❌ 기존 컴포넌트/파일 무단 수정
+- ❌ 새 npm 패키지 추가
 - ❌ TypeScript 변환
-- ❌ 디자인 시스템 임의 변경 (컬러, 폰트 등)
+- ❌ 디자인 시스템 임의 변경
 - ❌ Firestore 기존 컬렉션 건드리기
-- ❌ Admin 전용 데이터(수익, 아이디어)를 비로그인 상태에서 노출
+- ❌ Admin 전용 데이터를 비로그인 상태에서 노출
+- ❌ .env, .env.local 파일 Git 커밋에 포함
+- ❌ vercel --prod 직접 실행 (GitHub 푸시로 자동 배포)
 
 ---
 
-## 7. 구현 로그
+## 8. 구현 로그
 
-### 2026-04-28: Firestore 연동 + Admin Auth + ADD 모달 구현
-- Firestore 실시간 연동 (onSnapshot)
-- Firebase Auth 로그인 (isAdmin 상태 관리)
-- ADD PROJECT / ADD LOG 모달 (Admin 전용)
-- 우측 상단 숨겨진 ADMIN 버튼 → 로그인 모달
-- Vercel 배포 완료
-
-### 2026-04-28: 우선순위 1 작업 완료 및 기능 고도화
-- 프로젝트 카드 UI 개선 (Next Action, 링크 이동, Progress Bar 적용)
-- ADD PROJECT 모달 필드 추가 및 레이블 가독성 개선
-- EDIT PROJECT (수정) 및 VIEW LOG (프로젝트별 로그 팝업) 기능 구현
-- 전반적인 UI 텍스트 크기 상향 조정으로 가독성 최적화
-- 수익 표시 로직 개선 (₩0 처리 및 K 단위 조건부 적용)
-- 하드코딩된 더미 데이터 제거 및 Firestore 실제 데이터 연동 강화
-- Firestore 컬렉션 경로 동적 설정 (`artifacts/{VITE_FIREBASE_PROJECT_ID}/...`) 및 환경 변수 참조 수정
-
-### 2026-04-28: 우선순위 2 (수익화 추적) 구현 완료
-- 월별 수익 히스토리 SVG 차트 구현 (Admin 전용, 우측 패널)
-- 프로젝트별 목표 MRR 설정 및 달성률 표시 기능 추가
-- 달성률에 따른 조건부 컬러링 (Green/Amber/Dim) 적용
-- 모달 내 수익 관련 필드 한글 레이블 최적화
-- 모달 내 월별 수익 히스토리 직접 편집 기능 추가
-
-### 2026-04-28: 우선순위 3 (로그 & 아이디어 관리) 구현 완료
-- 빌드 로그 태그 분류 기능 추가 (기능추가 / 버그수정 / 배포 / 기획 / 기타)
-- 타임라인 로그 메시지 옆 태그 뱃지 표시 (조건부 색상 적용)
-- 아이디어 보관함(IDEA VAULT) 구현 (Admin 전용, 우측 패널)
-- 아이디어 추가 모달 및 상세 내용 펼치기(Accordion) 기능 구현
-- 아이디어 삭제 기능 및 Firestore 실시간 연동 완료
-
-### 2026-04-28: 랜딩페이지 및 서브 뷰 UI 개선
-- HomeView 및 SubViews 전체 텍스트 크기 상향 조정 (DevlogView 기준)
-- 프로젝트 카드 및 인사이트 아이템의 가독성 향상 (제목, 본문, 태그 등)
-- 인사이트 상세 페이지 본문 폰트 크기 최적화 (17px) 및 줄간격 조정
+### 2026-04-28: 전체 Devlog 대시보드 구현 완료
+- Firestore 실시간 연동, Admin Auth (숨겨진 ADMIN 버튼)
+- 프로젝트 카드 + 진행률 + Next Action + GitHub/배포 링크
+- ADD/EDIT PROJECT, ADD/EDIT/DELETE LOG
+- VIEW LOG 모달 (프로젝트별 로그 + 인라인 수정/삭제)
+- 수익 히스토리 SVG 라인 차트, 목표 MRR/달성률
+- 빌드 로그 태그 분류 (기능추가/버그수정/배포/기획/기타)
+- 아이디어 보관함 (IDEA VAULT)
+- 공개/비공개 구분 완성 (isAdmin 기반)
+- 랜딩페이지 Firebase DB 연동 수정 (하드코딩 제거)
+- 전체 사이트 텍스트 사이즈 개선
 
 ---
 
-## 8. 세션 시작 / 종료 규칙
+## 9. 세션 시작 / 종료 규칙
 
 ### 세션 시작 시
 1. 이 GEMINI.md 파일을 반드시 먼저 읽는다
-2. 섹션 4 로드맵에서 현재 진행할 작업 위치를 파악한다
-3. 작업 시작 전 "어떤 작업을 할 것인지" 한 줄 요약한다
-4. DevlogView.jsx 현재 상태를 확인한다
+2. 섹션 5 로드맵에서 현재 진행할 작업을 파악한다
+3. DevlogView.jsx 현재 상태를 확인한다
+4. 작업 시작 전 "어떤 작업을 할 것인지" 한 줄 요약한다
 
 ### 세션 종료 시
-1. 완료한 기능을 섹션 4 로드맵에서 ✅로 업데이트한다
-2. 아래 형식으로 devlog에 로그를 기록한다:
+1. 완료한 기능을 섹션 5 로드맵에서 ✅로 업데이트한다
+2. 섹션 8 구현 로그에 날짜와 작업 내용을 추가한다
+3. 아래 형식으로 devlog에 로그를 기록한다:
 
 ```
 오늘 작업 완료. devlog에 로그 남겨줘.
@@ -243,14 +283,15 @@ src/
 태그: 기능추가
 ```
 
-3. GEMINI.md 섹션 7 구현 로그에 날짜와 작업 내용을 추가한다
+4. 보안 규칙을 준수하여 GitHub에 커밋 및 푸시한다
+   (.env, .env.local 등 환경변수 파일은 절대 포함하지 말 것)
 
 ---
 
-## 9. 막히면 Claude에게 가져올 것
+## 10. 막히면 Claude에게 가져올 것
 
 - 컴포넌트 구조 변경이 필요할 때
-- Firebase 보안 규칙(Security Rules) 설정
+- Firebase 보안 규칙 설정
 - 새 기능 기획 및 우선순위 결정
 - 디자인 방향 결정
 - 에러가 2번 이상 반복될 때
