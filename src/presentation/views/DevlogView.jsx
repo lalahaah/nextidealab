@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../../infrastructure/FirebaseConfig';
+import { db, auth } from '../../infrastructure/FirebaseConfig';
 import { collection, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
+import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 
 export default function DevlogView() {
   const [projects, setProjects] = useState([]);
@@ -8,8 +9,13 @@ export default function DevlogView() {
   const [loading, setLoading] = useState(true);
   const [activeStackFilter, setActiveStackFilter] = useState(null);
 
+  // Auth & Admin State
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [loginError, setLoginError] = useState('');
+  const [loginForm, setLoginForm] = useState({ email: '', password: '' });
+
   // Modal State
-  const [modalType, setModalType] = useState(null); // 'project' | 'log' | null
+  const [modalType, setModalType] = useState(null); // 'project' | 'log' | 'login' | null
   const [isSaving, setIsSaving] = useState(false);
 
   // Form State
@@ -45,6 +51,11 @@ export default function DevlogView() {
   };
 
   useEffect(() => {
+    // Auth Listener
+    const unsubAuth = onAuthStateChanged(auth, (user) => {
+      setIsAdmin(!!user);
+    });
+
     // Projects Real-time Sync
     const colProjects = collection(db, 'devlog_projects');
     const unsubProjects = onSnapshot(colProjects, (snapshot) => {
@@ -97,13 +108,36 @@ export default function DevlogView() {
     });
 
     return () => {
+      unsubAuth();
       unsubProjects();
       unsubLogs();
     };
   }, []);
 
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setLoginError('');
+    setIsSaving(true);
+    try {
+      await signInWithEmailAndPassword(auth, loginForm.email, loginForm.password);
+      setModalType(null);
+      setLoginForm({ email: '', password: '' });
+    } catch (err) {
+      setLoginError('인증 실패: 이메일 또는 비밀번호를 확인하세요.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    if (window.confirm('로그아웃 하시겠습니까?')) {
+      await signOut(auth);
+    }
+  };
+
   const handleAddProject = async (e) => {
     e.preventDefault();
+    if (!isAdmin) return;
     setIsSaving(true);
     try {
       await addDoc(collection(db, 'devlog_projects'), {
@@ -127,6 +161,7 @@ export default function DevlogView() {
 
   const handleAddLog = async (e) => {
     e.preventDefault();
+    if (!isAdmin) return;
     setIsSaving(true);
     try {
       await addDoc(collection(db, 'devlog_logs'), {
@@ -188,9 +223,6 @@ export default function DevlogView() {
               <div className="flex items-center gap-2 text-xs"><span>⊞</span> All Projects</div>
               <span className="text-[9px] px-1.5 py-0.5 rounded-full border border-[#00d4ff44] bg-[#00d4ff22]" style={{ fontFamily: FONTS.mono }}>{projects.length}</span>
             </div>
-            <div className="flex items-center justify-between px-5 py-2 cursor-pointer border-l-2 border-transparent text-[#4a6080] hover:text-[#7a9ab8] hover:bg-[#0b1525]">
-              <div className="flex items-center gap-2 text-xs"><span>◎</span> Timeline</div>
-            </div>
           </div>
 
           {/* STATUS */}
@@ -200,7 +232,6 @@ export default function DevlogView() {
               { label: 'Live', color: COLORS.green, count: projects.filter(p => p.status === 'LIVE').length },
               { label: 'Building', color: COLORS.amber, count: projects.filter(p => p.status === 'BUILDING').length },
               { label: 'Idea', color: COLORS.blue, count: projects.filter(p => p.status === 'IDEA').length },
-              { label: 'Paused', color: COLORS.textDim, count: projects.filter(p => p.status === 'PAUSED').length },
             ].map(s => (
               <div key={s.label} className="flex items-center justify-between px-5 py-2 cursor-pointer border-l-2 border-transparent text-[#4a6080] hover:text-[#7a9ab8] hover:bg-[#0b1525]">
                 <div className="flex items-center gap-2 text-xs">
@@ -248,25 +279,36 @@ export default function DevlogView() {
                 실시간 빌드 아카이브 &nbsp;/&nbsp; 개발 대시보드
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-col items-end gap-3">
               <button 
-                onClick={() => setModalType('log')}
-                className="text-[9px] uppercase tracking-wider px-4 py-2 rounded font-bold transition-all border border-[#112240] hover:border-[#1a3060]"
-                style={{ color: COLORS.cyan, fontFamily: FONTS.mono }}
+                onClick={isAdmin ? handleLogout : () => setModalType('login')}
+                className="text-[9px] font-bold uppercase tracking-widest transition-all hover:opacity-80"
+                style={{ color: isAdmin ? COLORS.cyan : COLORS.border2, fontFamily: FONTS.mono }}
               >
-                + ADD LOG
+                {isAdmin ? 'LOGOUT' : 'ADMIN'}
               </button>
-              <button 
-                onClick={() => setModalType('project')}
-                className="text-[9px] uppercase tracking-wider px-4 py-2 rounded font-bold transition-all"
-                style={{ backgroundColor: COLORS.cyan, color: '#000', fontFamily: FONTS.mono }}
-              >
-                + ADD PROJECT
-              </button>
+              {isAdmin && (
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => setModalType('log')}
+                    className="text-[9px] uppercase tracking-wider px-4 py-2 rounded font-bold transition-all border border-[#112240] hover:border-[#1a3060]"
+                    style={{ color: COLORS.cyan, fontFamily: FONTS.mono }}
+                  >
+                    + ADD LOG
+                  </button>
+                  <button 
+                    onClick={() => setModalType('project')}
+                    className="text-[9px] uppercase tracking-wider px-4 py-2 rounded font-bold transition-all"
+                    style={{ backgroundColor: COLORS.cyan, color: '#000', fontFamily: FONTS.mono }}
+                  >
+                    + ADD PROJECT
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Project Cards Grid & Timeline... (rest of the main content remains same) */}
+          {/* Stats */}
           <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 mb-8">
             {[
               { label: 'Total Projects', val: projects.length.toString(), sub: 'In Archive', color: COLORS.cyan, textColor: COLORS.white },
@@ -384,18 +426,36 @@ export default function DevlogView() {
 
       </div>
 
-      {/* ── ADMIN MODAL ── */}
+      {/* ── MODALS ── */}
       {modalType && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-xl border p-6 shadow-2xl" style={{ backgroundColor: COLORS.card, borderColor: COLORS.border }}>
-            <div className="flex justify-between items-center mb-6">
+          <div className="w-full max-w-md rounded-xl border p-7 shadow-2xl relative" style={{ backgroundColor: COLORS.card, borderColor: COLORS.border2 }}>
+            <button onClick={() => setModalType(null)} className="absolute top-4 right-4 text-slate-500 hover:text-white transition-colors">✕</button>
+
+            <div className="mb-6">
               <h3 className="text-lg font-bold" style={{ color: COLORS.cyan, fontFamily: FONTS.mono }}>
-                {modalType === 'project' ? '＋ NEW PROJECT' : '＋ NEW LOG'}
+                {modalType === 'project' ? '＋ NEW PROJECT' : modalType === 'log' ? '＋ NEW LOG' : 'ADMIN LOGIN'}
               </h3>
-              <button onClick={() => setModalType(null)} style={{ color: COLORS.textDim }}>✕</button>
             </div>
 
-            {modalType === 'project' ? (
+            {modalType === 'login' && (
+              <form onSubmit={handleLogin} className="space-y-4">
+                <div className="space-y-1">
+                  <div className="text-[10px] uppercase tracking-widest pl-1" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>Email</div>
+                  <input required type="email" placeholder="admin@example.com" className="w-full p-3 rounded text-sm" value={loginForm.email} onChange={e => setLoginForm({...loginForm, email: e.target.value})} />
+                </div>
+                <div className="space-y-1">
+                  <div className="text-[10px] uppercase tracking-widest pl-1" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>Password</div>
+                  <input required type="password" placeholder="••••••••" className="w-full p-3 rounded text-sm" value={loginForm.password} onChange={e => setLoginForm({...loginForm, password: e.target.value})} />
+                </div>
+                {loginError && <div className="text-[10px] text-red-400 font-bold pl-1">{loginError}</div>}
+                <button disabled={isSaving} className="w-full py-3.5 rounded font-bold transition-all text-sm mt-4" style={{ backgroundColor: COLORS.cyan, color: '#000', fontFamily: FONTS.mono }}>
+                  {isSaving ? 'AUTHENTICATING...' : 'LOGIN'}
+                </button>
+              </form>
+            )}
+
+            {modalType === 'project' && isAdmin && (
               <form onSubmit={handleAddProject} className="space-y-4">
                 <input required placeholder="프로젝트명" className="w-full p-2.5 rounded text-xs" value={projectForm.name} onChange={e => setProjectForm({...projectForm, name: e.target.value})} />
                 <textarea required placeholder="설명" className="w-full p-2.5 rounded text-xs h-20" value={projectForm.description} onChange={e => setProjectForm({...projectForm, description: e.target.value})} />
@@ -404,18 +464,19 @@ export default function DevlogView() {
                     <option value="live">LIVE</option>
                     <option value="building">BUILDING</option>
                     <option value="idea">IDEA</option>
-                    <option value="paused">PAUSED</option>
                   </select>
                   <input type="number" placeholder="수익 (₩)" className="p-2.5 rounded text-xs" value={projectForm.revenue} onChange={e => setProjectForm({...projectForm, revenue: e.target.value})} />
                 </div>
-                <input placeholder="태그 (쉼표로 구분: AI, WEB...)" className="w-full p-2.5 rounded text-xs" value={projectForm.tags} onChange={e => setProjectForm({...projectForm, tags: e.target.value})} />
-                <input placeholder="스택 (쉼표로 구분: Next.js, OpenAI...)" className="w-full p-2.5 rounded text-xs" value={projectForm.stack} onChange={e => setProjectForm({...projectForm, stack: e.target.value})} />
-                <input placeholder="배포 URL (https://...)" className="w-full p-2.5 rounded text-xs" value={projectForm.deployUrl} onChange={e => setProjectForm({...projectForm, deployUrl: e.target.value})} />
+                <input placeholder="태그 (쉼표로 구분)" className="w-full p-2.5 rounded text-xs" value={projectForm.tags} onChange={e => setProjectForm({...projectForm, tags: e.target.value})} />
+                <input placeholder="스택 (쉼표로 구분)" className="w-full p-2.5 rounded text-xs" value={projectForm.stack} onChange={e => setProjectForm({...projectForm, stack: e.target.value})} />
+                <input placeholder="배포 URL" className="w-full p-2.5 rounded text-xs" value={projectForm.deployUrl} onChange={e => setProjectForm({...projectForm, deployUrl: e.target.value})} />
                 <button disabled={isSaving} className="w-full py-3 rounded font-bold transition-all text-sm mt-2" style={{ backgroundColor: COLORS.cyan, color: '#000', fontFamily: FONTS.mono }}>
                   {isSaving ? 'SAVING...' : 'SAVE PROJECT'}
                 </button>
               </form>
-            ) : (
+            )}
+
+            {modalType === 'log' && isAdmin && (
               <form onSubmit={handleAddLog} className="space-y-4">
                 <select required className="w-full p-2.5 rounded text-xs" value={logForm.projectName} onChange={e => setLogForm({...logForm, projectName: e.target.value})}>
                   <option value="">프로젝트 선택</option>

@@ -59,9 +59,13 @@ font-mono:    'Space Mono', monospace   /* 뱃지, 라벨, 날짜, 태그, 스�
 
 ## 3. 구현 로그 및 현재 상태
 
-### 2026-04-28: 데이터 동적 연동 및 Admin 기능 구현 (Firestore)
+### 2026-04-28: 데이터 동적 연동 및 Admin 기능 구현 (Firestore + Auth)
 - **Firestore 실시간 연동**: `devlog_projects`, `devlog_logs` 컬렉션을 `onSnapshot`으로 연결하여 데이터 변경 시 즉시 반영되도록 구현.
-- **Admin 입력 폼 구현**: 프로젝트 및 로그를 추가할 수 있는 모달 시스템 구축.
+- **Admin 인증 시스템 도입**:
+  - Firebase Auth(`signInWithEmailAndPassword`)를 통한 관리자 로그인 기능 구현.
+  - `onAuthStateChanged`를 사용하여 실시간 권한 감지 및 UI 제어 (isAdmin 상태).
+  - 우측 상단에 숨겨진 `ADMIN` 트리거 버튼 및 전용 로그인 모달 추가.
+- **Admin 입력 폼 구현**: 권한이 있는 경우에만 프로젝트 및 로그를 추가할 수 있는 모달 시스템 구축.
   - 프로젝트: 이름, 설명, 상태, 태그, 스택, URL, 수익 필드 지원.
   - 로그: 프로젝트 선택 및 메시지 입력 지원.
 - **데이터 시딩 스크립트 보완**: `seedDevlog.js`에서 `.env.local` 지원 및 환경 변수 파싱 로직 강화.
@@ -79,7 +83,7 @@ font-mono:    'Space Mono', monospace   /* 뱃지, 라벨, 날짜, 태그, 스�
 
 ### Step 3 — 삭제 및 수정 기능 추가
 - Admin 모달에 기존 프로젝트/로그 수정 및 삭제 기능 보완.
-- Firebase Auth 연동을 통한 Admin 접근 제어 강화.
+- Firestore Security Rules 강화 (Auth 기반 쓰기 권한 제한).
 
 ---
 
