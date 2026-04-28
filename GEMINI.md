@@ -252,6 +252,7 @@ src/
 - Firestore 실시간 연동, Admin Auth (숨겨진 ADMIN 버튼)
 - 프로젝트 카드 + 진행률 + Next Action + GitHub/배포 링크
 - ADD/EDIT PROJECT, ADD/EDIT/DELETE LOG
+- 프로젝트 카드 삭제 기능 추가 (isAdmin 전용)
 - VIEW LOG 모달 (프로젝트별 로그 + 인라인 수정/삭제)
 - 수익 히스토리 SVG 라인 차트, 목표 MRR/달성률
 - 빌드 로그 태그 분류 (기능추가/버그수정/배포/기획/기타)
