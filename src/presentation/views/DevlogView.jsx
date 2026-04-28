@@ -23,8 +23,10 @@ export default function DevlogView() {
 
   // Form State
   const [projectForm, setProjectForm] = useState({
-    name: '', description: '', status: 'building', tags: '', stack: '', deployUrl: '', githubUrl: '', nextAction: '', progress: 0, revenue: 0, targetMRR: 0
+    name: '', description: '', status: 'building', tags: '', stack: '', deployUrl: '', githubUrl: '', nextAction: '', progress: 0, revenue: 0, targetMRR: 0, revenueHistory: []
   });
+  const [historyMonth, setHistoryMonth] = useState('2026-01');
+  const [historyAmount, setHistoryAmount] = useState('');
   const [logForm, setLogForm] = useState({
     projectName: '', message: '', status: 'building'
   });
@@ -180,12 +182,13 @@ export default function DevlogView() {
         progress: Number(projectForm.progress),
         revenue: Number(projectForm.revenue),
         targetMRR: projectForm.targetMRR ? Number(projectForm.targetMRR) : null,
+        revenueHistory: projectForm.revenueHistory || [],
         startedAt: serverTimestamp(),
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       });
       setModalType(null);
-      setProjectForm({ name: '', description: '', status: 'building', tags: '', stack: '', deployUrl: '', githubUrl: '', nextAction: '', progress: 0, revenue: 0, targetMRR: 0 });
+      setProjectForm({ name: '', description: '', status: 'building', tags: '', stack: '', deployUrl: '', githubUrl: '', nextAction: '', progress: 0, revenue: 0, targetMRR: 0, revenueHistory: [] });
     } catch (err) {
       console.error(err);
       alert('저장 실패: ' + err.message);
@@ -207,7 +210,8 @@ export default function DevlogView() {
       nextAction: p.nextAction || '',
       progress: p.progress,
       revenue: p.revenue,
-      targetMRR: p.targetMRR || 0
+      targetMRR: p.targetMRR || 0,
+      revenueHistory: p.revenueHistory || []
     });
     setModalType('edit_project');
   };
@@ -225,6 +229,7 @@ export default function DevlogView() {
         progress: Number(projectForm.progress),
         revenue: Number(projectForm.revenue),
         targetMRR: projectForm.targetMRR ? Number(projectForm.targetMRR) : null,
+        revenueHistory: projectForm.revenueHistory || [],
         updatedAt: serverTimestamp()
       });
       setModalType(null);
@@ -235,6 +240,19 @@ export default function DevlogView() {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const addHistoryItem = () => {
+    if (!historyAmount) return;
+    const newItem = { month: historyMonth, amount: Number(historyAmount) };
+    const updatedHistory = [...(projectForm.revenueHistory || []), newItem].sort((a, b) => a.month.localeCompare(b.month));
+    setProjectForm({ ...projectForm, revenueHistory: updatedHistory });
+    setHistoryAmount('');
+  };
+
+  const removeHistoryItem = (index) => {
+    const updatedHistory = projectForm.revenueHistory.filter((_, i) => i !== index);
+    setProjectForm({ ...projectForm, revenueHistory: updatedHistory });
   };
 
   const handleViewLogs = async (p) => {
@@ -737,6 +755,33 @@ export default function DevlogView() {
                 <div className="space-y-1">
                   <div className="text-[10px] uppercase tracking-widest pl-1" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>GitHub URL</div>
                   <input placeholder="GitHub URL (https://github.com/...)" className="w-full p-2.5 rounded text-xs" value={projectForm.githubUrl} onChange={e => setProjectForm({...projectForm, githubUrl: e.target.value})} />
+                </div>
+
+                {/* Revenue History Section */}
+                <div className="pt-4 border-t" style={{ borderColor: COLORS.border }}>
+                  <div className="text-[10px] uppercase tracking-widest pl-1 mb-2" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>REVENUE HISTORY</div>
+                  
+                  <div className="flex gap-2 mb-3">
+                    <select className="flex-1 p-2 rounded text-xs" value={historyMonth} onChange={e => setHistoryMonth(e.target.value)}>
+                      {Array.from({ length: 12 }, (_, i) => {
+                        const m = (i + 1).toString().padStart(2, '0');
+                        return <option key={m} value={`2026-${m}`}>2026-{m}</option>;
+                      })}
+                    </select>
+                    <input type="number" placeholder="금액 (₩)" className="flex-1 p-2 rounded text-xs" value={historyAmount} onChange={e => setHistoryAmount(e.target.value)} />
+                    <button type="button" onClick={addHistoryItem} className="px-4 rounded font-bold" style={{ backgroundColor: COLORS.cyan, color: '#000' }}>+</button>
+                  </div>
+
+                  <div className="space-y-1 max-h-32 overflow-y-auto custom-scrollbar p-2 rounded" style={{ backgroundColor: '#0b1525', border: `1px solid ${COLORS.border}` }}>
+                    {projectForm.revenueHistory.length === 0 ? (
+                      <div className="text-[10px] text-center py-2" style={{ color: COLORS.textDim }}>데이터 없음</div>
+                    ) : projectForm.revenueHistory.map((item, i) => (
+                      <div key={i} className="flex justify-between items-center text-[11px]" style={{ color: COLORS.textMid, fontFamily: FONTS.mono }}>
+                        <span>{item.month} | ₩{item.amount.toLocaleString()}</span>
+                        <button type="button" onClick={() => removeHistoryItem(i)} className="text-red-400 hover:text-red-300 ml-2">✕</button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
                 <button disabled={isSaving} className="w-full py-3.5 rounded font-bold transition-all text-sm mt-2" style={{ backgroundColor: COLORS.cyan, color: '#000', fontFamily: FONTS.mono }}>
