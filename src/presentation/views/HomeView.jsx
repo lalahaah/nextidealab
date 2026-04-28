@@ -73,10 +73,19 @@ const ContactSection = () => {
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
-                        <div><label>Name</label><input required value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="Your name" /></div>
-                        <div><label>Email</label><input required type="email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} placeholder="email@example.com" /></div>
+                        <div className="space-y-1">
+                            <label className="text-[11px] uppercase tracking-widest text-slate-500 font-bold font-mono pl-1">Name</label>
+                            <input required value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="Your name" className="bg-slate-900/50 border border-white/10 rounded-lg px-4 py-2.5 text-sm w-full focus:outline-none" />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[11px] uppercase tracking-widest text-slate-500 font-bold font-mono pl-1">Email</label>
+                            <input required type="email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} placeholder="email@example.com" className="bg-slate-900/50 border border-white/10 rounded-lg px-4 py-2.5 text-sm w-full focus:outline-none" />
+                        </div>
                     </div>
-                    <div><label>Message</label><textarea required rows={4} value={formData.message} onChange={e => setFormData({ ...formData, message: e.target.value })} placeholder="Describe your idea or project..." /></div>
+                    <div className="space-y-1">
+                        <label className="text-[11px] uppercase tracking-widest text-slate-500 font-bold font-mono pl-1">Message</label>
+                        <textarea required rows={4} value={formData.message} onChange={e => setFormData({ ...formData, message: e.target.value })} placeholder="Describe your idea or project..." className="bg-slate-900/50 border border-white/10 rounded-lg px-4 py-2.5 text-sm w-full focus:outline-none" />
+                    </div>
                     <button
                         disabled={isSubmitting}
                         className={cn(
@@ -94,6 +103,13 @@ const ContactSection = () => {
 
 export const HomeView = ({ projects, insights, onNavigate }) => (
     <motion.div key="home" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+        <style>{`
+            #projects h3 { font-size: 17px !important; }
+            #projects p { font-size: 13px !important; }
+            #projects span { font-size: 11px !important; }
+            #insights h3 { font-size: 20px !important; }
+            #insights span { font-size: 11px !important; }
+        `}</style>
         <SEO
             title="Home"
             description="Future-focused AI & Web Development Lab. We archive innovation and record the process of creation."
@@ -105,7 +121,10 @@ export const HomeView = ({ projects, insights, onNavigate }) => (
         </HeroSection>
         <section id="projects" className="w-full max-w-6xl mx-auto px-4 md:px-6 py-20 md:py-32 relative z-20">
             <div className="mb-12 flex flex-col md:flex-row md:justify-between md:items-end gap-6">
-                <div><h2 className="text-3xl md:text-5xl font-sans font-medium tracking-tight bg-gradient-to-br from-slate-300 to-slate-500 bg-clip-text text-transparent mb-2">Projects.</h2><p className="text-xs text-slate-400 uppercase tracking-widest font-bold font-mono">실제 작동하는 비즈니스 프로덕트</p></div>
+                <div>
+                    <h2 className="text-3xl md:text-5xl font-sans font-medium tracking-tight bg-gradient-to-br from-slate-300 to-slate-500 bg-clip-text text-transparent mb-2">Projects.</h2>
+                    <p className="text-sm text-slate-400 uppercase tracking-widest font-bold font-mono">실제 작동하는 비즈니스 프로덕트</p>
+                </div>
                 <button onClick={() => onNavigate('projects')} className="text-xs uppercase tracking-widest text-white/60 hover:text-white pb-1 border-b border-white/20 hover:border-white transition-colors font-bold font-mono">View All Projects</button>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -114,7 +133,10 @@ export const HomeView = ({ projects, insights, onNavigate }) => (
         </section>
         <section id="insights" className="w-full max-w-6xl mx-auto px-4 md:px-6 py-20 md:py-32 relative z-20 border-t border-white/5">
             <div className="mb-12 flex flex-col md:flex-row md:justify-between md:items-end gap-6">
-                <div><h2 className="text-3xl md:text-5xl font-sans font-medium tracking-tight bg-gradient-to-br from-slate-300 to-slate-500 bg-clip-text text-transparent mb-2">Latest Insights.</h2><p className="text-xs text-slate-400 uppercase tracking-widest font-bold font-mono">기술 및 비즈니스 회고록</p></div>
+                <div>
+                    <h2 className="text-3xl md:text-5xl font-sans font-medium tracking-tight bg-gradient-to-br from-slate-300 to-slate-500 bg-clip-text text-transparent mb-2">Latest Insights.</h2>
+                    <p className="text-sm text-slate-400 uppercase tracking-widest font-bold font-mono">기술 및 비즈니스 회고록</p>
+                </div>
                 <button onClick={() => onNavigate('insights')} className="text-xs uppercase tracking-widest text-white/60 hover:text-white pb-1 border-b border-white/20 hover:border-white transition-colors font-bold font-mono">View All Posts</button>
             </div>
             <div className="flex flex-col gap-3">
