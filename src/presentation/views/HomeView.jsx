@@ -62,34 +62,34 @@ const ContactSection = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-16">
                 <div>
                     <h2 className="text-3xl md:text-5xl font-sans font-medium tracking-tight bg-gradient-to-br from-slate-300 to-slate-500 bg-clip-text text-transparent mb-6">Let's build together.</h2>
-                    <p className="text-sm text-slate-400 font-mono leading-relaxed mb-8 font-bold">
+                    <p className="text-[16px] text-slate-400 font-mono leading-relaxed mb-8 font-bold">
                         Next Idea Lab은 항상 새로운 실험과 파트너십에 열려있습니다. 아이디어를 현실로 만드는 여정에 함께하세요.
                     </p>
                     <div className="space-y-4">
-                        <div className="flex items-center gap-4 text-slate-300 group"><Mail size={18} className="text-cyan-400" /> <span className="text-sm group-hover:text-white transition-colors font-bold">hello@nextidealab.app</span></div>
-                        <div className="flex items-center gap-4 text-slate-300 group"><Terminal size={18} className="text-cyan-400" /> <span className="text-sm group-hover:text-white transition-colors font-bold">Seoul, Republic of Korea</span></div>
+                        <div className="flex items-center gap-4 text-slate-300 group"><Mail size={18} className="text-cyan-400" /> <span className="text-[16px] group-hover:text-white transition-colors font-bold">hello@nextidealab.app</span></div>
+                        <div className="flex items-center gap-4 text-slate-300 group"><Terminal size={18} className="text-cyan-400" /> <span className="text-[16px] group-hover:text-white transition-colors font-bold">Seoul, Republic of Korea</span></div>
                     </div>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1">
-                            <label className="text-[11px] uppercase tracking-widest text-slate-500 font-bold font-mono pl-1">Name</label>
-                            <input required value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="Your name" className="bg-slate-900/50 border border-white/10 rounded-lg px-4 py-2.5 text-sm w-full focus:outline-none" />
+                            <label className="text-[14px] uppercase tracking-widest text-slate-500 font-bold font-mono pl-1">Name</label>
+                            <input required value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="Your name" className="bg-slate-900/50 border border-white/10 rounded-lg px-4 py-2.5 text-[16px] w-full focus:outline-none" />
                         </div>
                         <div className="space-y-1">
-                            <label className="text-[11px] uppercase tracking-widest text-slate-500 font-bold font-mono pl-1">Email</label>
-                            <input required type="email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} placeholder="email@example.com" className="bg-slate-900/50 border border-white/10 rounded-lg px-4 py-2.5 text-sm w-full focus:outline-none" />
+                            <label className="text-[14px] uppercase tracking-widest text-slate-500 font-bold font-mono pl-1">Email</label>
+                            <input required type="email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} placeholder="email@example.com" className="bg-slate-900/50 border border-white/10 rounded-lg px-4 py-2.5 text-[16px] w-full focus:outline-none" />
                         </div>
                     </div>
                     <div className="space-y-1">
-                        <label className="text-[11px] uppercase tracking-widest text-slate-500 font-bold font-mono pl-1">Message</label>
-                        <textarea required rows={4} value={formData.message} onChange={e => setFormData({ ...formData, message: e.target.value })} placeholder="Describe your idea or project..." className="bg-slate-900/50 border border-white/10 rounded-lg px-4 py-2.5 text-sm w-full focus:outline-none" />
+                        <label className="text-[14px] uppercase tracking-widest text-slate-500 font-bold font-mono pl-1">Message</label>
+                        <textarea required rows={4} value={formData.message} onChange={e => setFormData({ ...formData, message: e.target.value })} placeholder="Describe your idea or project..." className="bg-slate-900/50 border border-white/10 rounded-lg px-4 py-2.5 text-[16px] w-full focus:outline-none" />
                     </div>
                     <button
                         disabled={isSubmitting}
                         className={cn(
-                            "w-full py-4 rounded-xl font-bold uppercase tracking-widest text-xs flex items-center justify-center gap-2 transition-all",
+                            "w-full py-4 rounded-xl font-bold uppercase tracking-widest text-[14px] flex items-center justify-center gap-2 transition-all",
                             isSuccess ? "bg-emerald-500 text-white" : "bg-cyan-500 text-slate-950 hover:bg-cyan-400"
                         )}
                     >
@@ -103,13 +103,6 @@ const ContactSection = () => {
 
 export const HomeView = ({ projects, insights, onNavigate }) => (
     <motion.div key="home" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-        <style>{`
-            #projects h3 { font-size: 17px !important; }
-            #projects p { font-size: 13px !important; }
-            #projects span { font-size: 11px !important; }
-            #insights h3 { font-size: 20px !important; }
-            #insights span { font-size: 11px !important; }
-        `}</style>
         <SEO
             title="Home"
             description="Future-focused AI & Web Development Lab. We archive innovation and record the process of creation."
@@ -123,9 +116,9 @@ export const HomeView = ({ projects, insights, onNavigate }) => (
             <div className="mb-12 flex flex-col md:flex-row md:justify-between md:items-end gap-6">
                 <div>
                     <h2 className="text-3xl md:text-5xl font-sans font-medium tracking-tight bg-gradient-to-br from-slate-300 to-slate-500 bg-clip-text text-transparent mb-2">Projects.</h2>
-                    <p className="text-sm text-slate-400 uppercase tracking-widest font-bold font-mono">실제 작동하는 비즈니스 프로덕트</p>
+                    <p className="text-[16px] text-slate-400 uppercase tracking-widest font-bold font-mono">실제 작동하는 비즈니스 프로덕트</p>
                 </div>
-                <button onClick={() => onNavigate('projects')} className="text-xs uppercase tracking-widest text-white/60 hover:text-white pb-1 border-b border-white/20 hover:border-white transition-colors font-bold font-mono">View All Projects</button>
+                <button onClick={() => onNavigate('projects')} className="text-[14px] uppercase tracking-widest text-white/60 hover:text-white pb-1 border-b border-white/20 hover:border-white transition-colors font-bold font-mono">View All Projects</button>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {projects.slice(0, 3).map((p, i) => <ProjectCard key={p.id || i} project={p} idx={i} />)}
@@ -135,9 +128,9 @@ export const HomeView = ({ projects, insights, onNavigate }) => (
             <div className="mb-12 flex flex-col md:flex-row md:justify-between md:items-end gap-6">
                 <div>
                     <h2 className="text-3xl md:text-5xl font-sans font-medium tracking-tight bg-gradient-to-br from-slate-300 to-slate-500 bg-clip-text text-transparent mb-2">Latest Insights.</h2>
-                    <p className="text-sm text-slate-400 uppercase tracking-widest font-bold font-mono">기술 및 비즈니스 회고록</p>
+                    <p className="text-[16px] text-slate-400 uppercase tracking-widest font-bold font-mono">기술 및 비즈니스 회고록</p>
                 </div>
-                <button onClick={() => onNavigate('insights')} className="text-xs uppercase tracking-widest text-white/60 hover:text-white pb-1 border-b border-white/20 hover:border-white transition-colors font-bold font-mono">View All Posts</button>
+                <button onClick={() => onNavigate('insights')} className="text-[14px] uppercase tracking-widest text-white/60 hover:text-white pb-1 border-b border-white/20 hover:border-white transition-colors font-bold font-mono">View All Posts</button>
             </div>
             <div className="flex flex-col gap-3">
                 {insights.slice(0, 3).map((p, i) => <InsightItem key={p.id || i} post={p} idx={i} onNavigate={onNavigate} />)}
