@@ -18,8 +18,9 @@ export default function DevlogView() {
   const [loginForm, setLoginForm] = useState({ email: '', password: '' });
 
   // Modal State
-  const [modalType, setModalType] = useState(null); // 'project' | 'edit_project' | 'log' | 'login' | 'view_logs' | 'idea' | null
+  const [modalType, setModalType] = useState(null); // 'project' | 'edit_project' | 'log' | 'edit_log' | 'login' | 'view_logs' | 'idea' | null
   const [selectedProject, setSelectedProject] = useState(null);
+  const [selectedLog, setSelectedLog] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [expandedIdea, setExpandedIdea] = useState(null);
 
@@ -30,7 +31,7 @@ export default function DevlogView() {
   const [historyMonth, setHistoryMonth] = useState('2026-01');
   const [historyAmount, setHistoryAmount] = useState('');
   const [logForm, setLogForm] = useState({
-    projectName: '', message: '', status: 'building', tag: '기타'
+    projectId: '', projectName: '', message: '', status: 'building', tag: '기타'
   });
   const [ideaForm, setIdeaForm] = useState({
     title: '', description: '', potential: 'mid', tags: ''
@@ -121,10 +122,14 @@ export default function DevlogView() {
         else if (status === 'IDEA') color = COLORS.blue;
 
         return {
+          id: doc.id,
+          projectId: data.projectId || '',
           project: data.projectName || data.project || 'Unknown',
           msg: data.message || data.msg || '',
           tag: data.tag || null,
+          status: status,
           date: data.loggedAt?.toDate ? formatTimeAgo(data.loggedAt.toDate()) : 'RECENT',
+          loggedAt: data.loggedAt,
           color: color
         };
       });
@@ -275,46 +280,109 @@ export default function DevlogView() {
     setProjectForm({ ...projectForm, revenueHistory: updatedHistory });
   };
 
+  const handleAddLog = async (e) => {
+    e.preventDefault();
+    if (!isAdmin) return;
+    setIsSaving(true);
+    try {
+      const targetProject = projects.find(p => p.name === logForm.projectName);
+      await addDoc(collection(db, 'devlog_logs'), {
+        ...logForm,
+        projectId: targetProject?.id || '',
+        loggedAt: serverTimestamp(),
+        createdAt: serverTimestamp()
+      });
+      setModalType(null);
+      setLogForm({ projectId: '', projectName: '', message: '', status: 'building', tag: '기타' });
+    } catch (err) {
+      console.error(err);
+      alert('로그 저장 실패: ' + err.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleEditLogClick = (log) => {
+    setSelectedLog(log);
+    setLogForm({
+      projectId: log.projectId || '',
+      projectName: log.project || '',
+      message: log.msg || '',
+      tag: log.tag || '기타',
+      status: log.status?.toLowerCase() || 'building'
+    });
+    setModalType('edit_log');
+  };
+
+  const handleUpdateLog = async (e) => {
+    e.preventDefault();
+    if (!isAdmin || !selectedLog) return;
+    setIsSaving(true);
+    try {
+      const logRef = doc(db, 'devlog_logs', selectedLog.id);
+      await updateDoc(logRef, {
+        message: logForm.message,
+        tag: logForm.tag,
+        status: logForm.status,
+        updatedAt: serverTimestamp()
+      });
+      setModalType(null);
+      setSelectedLog(null);
+    } catch (err) {
+      console.error(err);
+      alert('로그 업데이트 실패: ' + err.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeleteLog = async (id) => {
+    if (!isAdmin) return;
+    if (window.confirm('이 로그를 삭제하시겠습니까?')) {
+      try {
+        await deleteDoc(doc(db, 'devlog_logs', id));
+      } catch (err) {
+        console.error('로그 삭제 실패:', err);
+      }
+    }
+  };
+
   const handleViewLogs = async (p) => {
     setSelectedProject(p);
     setModalType('view_logs');
     setProjectLogs([]); // 초기화
     
     try {
-      const q = query(
+      // 1. 프로젝트명으로 조회
+      const qName = query(
         collection(db, 'devlog_logs'),
         where('projectName', '==', p.name),
         orderBy('loggedAt', 'desc')
       );
-      const snapshot = await getDocs(q);
-      const logsData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        date: doc.data().loggedAt?.toDate ? doc.data().loggedAt.toDate().toLocaleDateString() : 'RECENT'
-      }));
-      setProjectLogs(logsData);
+      
+      // 2. 프로젝트 ID로 조회
+      const qId = query(
+        collection(db, 'devlog_logs'),
+        where('projectId', '==', p.id),
+        orderBy('loggedAt', 'desc')
+      );
+
+      const [snapName, snapId] = await Promise.all([getDocs(qName), getDocs(qId)]);
+      
+      const combinedLogs = [...snapName.docs, ...snapId.docs].reduce((acc, doc) => {
+        if (!acc.find(l => l.id === doc.id)) {
+          acc.push({
+            id: doc.id,
+            ...doc.data(),
+            date: doc.data().loggedAt?.toDate ? doc.data().loggedAt.toDate().toLocaleDateString() : 'RECENT'
+          });
+        }
+        return acc;
+      }, []);
+
+      setProjectLogs(combinedLogs.sort((a, b) => (b.loggedAt?.seconds || 0) - (a.loggedAt?.seconds || 0)));
     } catch (err) {
       console.error('로그 조회 실패:', err);
-    }
-  };
-
-  const handleAddLog = async (e) => {
-    e.preventDefault();
-    if (!isAdmin) return;
-    setIsSaving(true);
-    try {
-      await addDoc(collection(db, 'devlog_logs'), {
-        ...logForm,
-        loggedAt: serverTimestamp(),
-        createdAt: serverTimestamp()
-      });
-      setModalType(null);
-      setLogForm({ projectName: '', message: '', status: 'building', tag: '기타' });
-    } catch (err) {
-      console.error(err);
-      alert('로그 저장 실패: ' + err.message);
-    } finally {
-      setIsSaving(false);
     }
   };
 
@@ -635,8 +703,27 @@ export default function DevlogView() {
                       </div>
                       <div className="text-[13px] truncate" style={{ color: COLORS.textMid }}>{log.msg}</div>
                     </div>
-                    <span className="text-[11px] uppercase ml-4 shrink-0" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>{log.date}</span>
-                  </div>
+                    <div className="flex items-center gap-4 ml-4 shrink-0">
+                      {isAdmin && (
+                        <div className="flex items-center gap-2">
+                          <button 
+                            onClick={() => handleEditLogClick(log)}
+                            className="text-[#4a6080] hover:text-[#00d4ff] transition-all"
+                          >
+                            <Edit2 size={12} />
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteLog(log.id)}
+                            className="text-[#4a6080] hover:text-[#ff4466] transition-all"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      )}
+                      <span className="text-[11px] uppercase" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>{log.date}</span>
+                    </div>
+                    </div>
+
                 </div>
               ))}
             </div>
@@ -953,6 +1040,47 @@ export default function DevlogView() {
 
                 <button disabled={isSaving} className="w-full py-3 rounded font-bold transition-all text-sm mt-2" style={{ backgroundColor: COLORS.cyan, color: '#000', fontFamily: FONTS.mono }}>
                   {isSaving ? 'SAVING...' : 'SAVE LOG'}
+                </button>
+              </form>
+            )}
+
+            {modalType === 'edit_log' && isAdmin && (
+              <form onSubmit={handleUpdateLog} className="space-y-4">
+                <div className="space-y-1">
+                  <div className="text-[10px] uppercase tracking-widest pl-1" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>프로젝트</div>
+                  <div className="w-full p-2.5 rounded text-xs opacity-50 border border-[#112240] bg-[#0d1a2d]" style={{ color: COLORS.textMid }}>
+                    {logForm.projectName}
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <div className="text-[10px] uppercase tracking-widest pl-1" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>로그 태그</div>
+                    <select required className="w-full p-2.5 rounded text-xs" value={logForm.tag} onChange={e => setLogForm({...logForm, tag: e.target.value})}>
+                      <option value="기능추가">기능추가</option>
+                      <option value="버그수정">버그수정</option>
+                      <option value="배포">배포</option>
+                      <option value="기획">기획</option>
+                      <option value="기타">기타</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="text-[10px] uppercase tracking-widest pl-1" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>상태</div>
+                    <select className="w-full p-2.5 rounded text-xs" value={logForm.status} onChange={e => setLogForm({...logForm, status: e.target.value})}>
+                      <option value="building">BUILDING</option>
+                      <option value="live">LIVE</option>
+                      <option value="idea">IDEA</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <div className="text-[10px] uppercase tracking-widest pl-1" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>로그 메시지</div>
+                  <textarea required placeholder="로그 메시지" className="w-full p-2.5 rounded text-xs h-24" value={logForm.message} onChange={e => setLogForm({...logForm, message: e.target.value})} />
+                </div>
+
+                <button disabled={isSaving} className="w-full py-3 rounded font-bold transition-all text-sm mt-2" style={{ backgroundColor: COLORS.cyan, color: '#000', fontFamily: FONTS.mono }}>
+                  {isSaving ? 'UPDATING...' : 'UPDATE LOG'}
                 </button>
               </form>
             )}
