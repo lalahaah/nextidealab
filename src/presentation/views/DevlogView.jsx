@@ -682,7 +682,7 @@ export default function DevlogView() {
                         </div>
                       </div>
                       <span className="text-[8px] uppercase tracking-wider" style={{ color: p.statusColor, fontFamily: FONTS.mono }}>{p.progress}% COMPLETED</span>
-                      {isAdmin && mrrRate !== null && (
+                      {isAdmin && mrrRate !== null && mrrRate > 0 && (
                         <span className="text-[11px] uppercase mt-0.5" style={{ color: mrrColor, fontFamily: FONTS.mono }}>MRR 목표 {mrrRate}%</span>
                       )}
                     </div>
@@ -768,22 +768,61 @@ export default function DevlogView() {
           style={{ backgroundColor: COLORS.bg2, borderColor: COLORS.border }}
         >
           <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar" style={{ padding: '28px 18px' }}>
-            {/* Revenue Tracker */}
-            <div className="mb-7">
-              <div className="text-[11px] uppercase tracking-[1.8px] pb-2 mb-3 border-b" style={{ color: COLORS.textDim, borderColor: COLORS.border, fontFamily: FONTS.mono }}>Revenue Tracker</div>
-              {projects.filter(p => (p.revenue || 0) > 0).length === 0 ? (
-                <div className="text-[12px]" style={{ color: COLORS.textDim }}>수익 발생 프로젝트 없음</div>
-              ) : projects.filter(p => (p.revenue || 0) > 0).map(p => (
-                <div key={p.id} className="flex justify-between items-center mb-2">
-                  <span className="text-[12px] truncate" style={{ color: COLORS.textMid, maxWidth: '120px' }}>{p.name}</span>
-                  <span className="text-[12px] font-bold shrink-0" style={{ color: COLORS.green, fontFamily: FONTS.mono }}>{formatRevenue(p.revenue)}</span>
+            
+            {/* Build Activity (Public) */}
+            <div className="mb-8">
+              <div className="text-[11px] uppercase tracking-[1.8px] pb-2 mb-3 border-b" style={{ color: COLORS.textDim, borderColor: COLORS.border, fontFamily: FONTS.mono }}>Build Activity</div>
+              <div className="grid grid-cols-7 gap-1 mb-2">
+                {Array.from({ length: 28 }).map((_, i) => {
+                  const levels = ['', 'bg-[#00d4ff22]', 'bg-[#00d4ff44]', 'bg-[#00d4ff88]', 'bg-[#00d4ff]'];
+                  const level = i % 5 === 0 ? 0 : (i % 4) + 1; // dummy pattern
+                  return (
+                    <div key={i} className={`w-full aspect-square rounded-sm border border-[#112240] ${levels[level]}`}></div>
+                  );
+                })}
+              </div>
+              <div className="text-[10px] text-right" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>LATEST 28 DAYS</div>
+            </div>
+
+            {/* Stack Usage (Public) */}
+            <div className="mb-8">
+              <div className="text-[11px] uppercase tracking-[1.8px] pb-2 mb-3 border-b" style={{ color: COLORS.textDim, borderColor: COLORS.border, fontFamily: FONTS.mono }}>Stack Usage</div>
+              {[
+                { name: 'React', pct: 92, color: COLORS.cyan },
+                { name: 'Firebase', pct: 85, color: COLORS.green },
+                { name: 'Tailwind', pct: 78, color: COLORS.blue },
+                { name: 'Node.js', pct: 65, color: COLORS.amber },
+              ].map(s => (
+                <div key={s.name} className="mb-3">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-[11px]" style={{ color: COLORS.textMid, fontFamily: FONTS.mono }}>{s.name}</span>
+                    <span className="text-[10px]" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>{s.pct}%</span>
+                  </div>
+                  <div className="h-1 w-full bg-[#112240] rounded-full overflow-hidden">
+                    <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${s.pct}%`, backgroundColor: s.color }}></div>
+                  </div>
                 </div>
               ))}
-              <div className="mt-2 pt-2 border-t flex justify-between items-center" style={{ borderColor: COLORS.border }}>
-                <span className="text-[12px]" style={{ color: COLORS.textDim }}>누적 합계</span>
-                <span className="text-[13px] font-bold shrink-0" style={{ color: COLORS.green, fontFamily: FONTS.mono }}>{formatRevenue(projects.reduce((acc, p) => acc + (p.revenue || 0), 0))}</span>
-              </div>
             </div>
+
+            {/* Revenue Tracker (Admin Only) */}
+            {isAdmin && (
+              <div className="mb-7">
+                <div className="text-[11px] uppercase tracking-[1.8px] pb-2 mb-3 border-b" style={{ color: COLORS.textDim, borderColor: COLORS.border, fontFamily: FONTS.mono }}>Revenue Tracker</div>
+                {projects.filter(p => (p.revenue || 0) > 0).length === 0 ? (
+                  <div className="text-[12px]" style={{ color: COLORS.textDim }}>수익 발생 프로젝트 없음</div>
+                ) : projects.filter(p => (p.revenue || 0) > 0).map(p => (
+                  <div key={p.id} className="flex justify-between items-center mb-2">
+                    <span className="text-[12px] truncate" style={{ color: COLORS.textMid, maxWidth: '120px' }}>{p.name}</span>
+                    <span className="text-[12px] font-bold shrink-0" style={{ color: COLORS.green, fontFamily: FONTS.mono }}>{formatRevenue(p.revenue)}</span>
+                  </div>
+                ))}
+                <div className="mt-2 pt-2 border-t flex justify-between items-center" style={{ borderColor: COLORS.border }}>
+                  <span className="text-[12px]" style={{ color: COLORS.textDim }}>누적 합계</span>
+                  <span className="text-[13px] font-bold shrink-0" style={{ color: COLORS.green, fontFamily: FONTS.mono }}>{formatRevenue(projects.reduce((acc, p) => acc + (p.revenue || 0), 0))}</span>
+                </div>
+              </div>
+            )}
 
             {/* Revenue History Chart (Admin Only) */}
             {isAdmin && (
@@ -832,18 +871,20 @@ export default function DevlogView() {
               </div>
             )}
 
-            {/* Next Actions */}
-            <div className="mb-7">
-              <div className="text-[11px] uppercase tracking-[1.8px] pb-2 mb-3 border-b" style={{ color: COLORS.textDim, borderColor: COLORS.border, fontFamily: FONTS.mono }}>Next Actions</div>
-              {projects.filter(p => p.nextAction).slice(0, 5).map((p, i) => (
-                <div key={i} className="flex gap-2.5 items-start mb-2.5">
-                  <div className="w-1 h-1 rounded-full mt-[5px] shrink-0" style={{ backgroundColor: p.statusColor }}></div>
-                  <div className="text-[12px] leading-relaxed" style={{ color: COLORS.textDim }}>
-                    <span className="font-bold text-[#7a9ab8]">{p.name}:</span> {p.nextAction}
+            {/* Next Actions (Admin Only) */}
+            {isAdmin && (
+              <div className="mb-7">
+                <div className="text-[11px] uppercase tracking-[1.8px] pb-2 mb-3 border-b" style={{ color: COLORS.textDim, borderColor: COLORS.border, fontFamily: FONTS.mono }}>Next Actions</div>
+                {projects.filter(p => p.nextAction).slice(0, 5).map((p, i) => (
+                  <div key={i} className="flex gap-2.5 items-start mb-2.5">
+                    <div className="w-1 h-1 rounded-full mt-[5px] shrink-0" style={{ backgroundColor: p.statusColor }}></div>
+                    <div className="text-[12px] leading-relaxed" style={{ color: COLORS.textDim }}>
+                      <span className="font-bold text-[#7a9ab8]">{p.name}:</span> {p.nextAction}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
 
             {/* Idea Vault (Admin Only) */}
             {isAdmin && (
