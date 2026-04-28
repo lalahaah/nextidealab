@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { db, auth } from '../../infrastructure/FirebaseConfig';
-import { collection, onSnapshot, addDoc, serverTimestamp, updateDoc, doc, query, where, getDocs, orderBy, deleteDoc } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, serverTimestamp, updateDoc, doc, query, where, getDocs, deleteDoc } from 'firebase/firestore';
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { Github, ExternalLink, Edit2 } from 'lucide-react';
 
@@ -353,34 +353,37 @@ export default function DevlogView() {
     setProjectLogs([]); // 초기화
     
     try {
-      // 1. 프로젝트명으로 조회
+      // 인덱스 에러 방지를 위해 orderBy 제거 후 JS에서 정렬
       const qName = query(
         collection(db, 'devlog_logs'),
-        where('projectName', '==', p.name),
-        orderBy('loggedAt', 'desc')
+        where('projectName', '==', p.name)
       );
       
-      // 2. 프로젝트 ID로 조회
       const qId = query(
         collection(db, 'devlog_logs'),
-        where('projectId', '==', p.id),
-        orderBy('loggedAt', 'desc')
+        where('projectId', '==', p.id)
       );
 
       const [snapName, snapId] = await Promise.all([getDocs(qName), getDocs(qId)]);
       
       const combinedLogs = [...snapName.docs, ...snapId.docs].reduce((acc, doc) => {
         if (!acc.find(l => l.id === doc.id)) {
+          const data = doc.data();
           acc.push({
             id: doc.id,
-            ...doc.data(),
-            date: doc.data().loggedAt?.toDate ? doc.data().loggedAt.toDate().toLocaleDateString() : 'RECENT'
+            ...data,
+            date: data.loggedAt?.toDate ? data.loggedAt.toDate().toLocaleDateString() : 'RECENT'
           });
         }
         return acc;
       }, []);
 
-      setProjectLogs(combinedLogs.sort((a, b) => (b.loggedAt?.seconds || 0) - (a.loggedAt?.seconds || 0)));
+      // JavaScript에서 정렬 처리 (loggedAt 내림차순)
+      setProjectLogs(combinedLogs.sort((a, b) => {
+        const timeA = a.loggedAt?.seconds || 0;
+        const timeB = b.loggedAt?.seconds || 0;
+        return timeB - timeA;
+      }));
     } catch (err) {
       console.error('로그 조회 실패:', err);
     }
