@@ -23,6 +23,8 @@ export default function DevlogView() {
   const [selectedLog, setSelectedLog] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [expandedIdea, setExpandedIdea] = useState(null);
+  const [editingLogId, setEditingLogId] = useState(null);
+  const [inlineEditForm, setInlineEditForm] = useState({ message: '', tag: '기타' });
 
   // Form State
   const [projectForm, setProjectForm] = useState({
@@ -341,9 +343,36 @@ export default function DevlogView() {
     if (window.confirm('이 로그를 삭제하시겠습니까?')) {
       try {
         await deleteDoc(doc(db, 'devlog_logs', id));
+        // 모달 안의 목록에서도 즉시 제거
+        setProjectLogs(prev => prev.filter(l => l.id !== id));
       } catch (err) {
         console.error('로그 삭제 실패:', err);
       }
+    }
+  };
+
+  const startInlineEdit = (log) => {
+    setEditingLogId(log.id);
+    setInlineEditForm({ message: log.message || log.msg || '', tag: log.tag || '기타' });
+  };
+
+  const handleInlineUpdate = async (id) => {
+    setIsSaving(true);
+    try {
+      const logRef = doc(db, 'devlog_logs', id);
+      await updateDoc(logRef, {
+        message: inlineEditForm.message,
+        tag: inlineEditForm.tag,
+        updatedAt: serverTimestamp()
+      });
+      // 로컬 상태 업데이트
+      setProjectLogs(prev => prev.map(l => l.id === id ? { ...l, message: inlineEditForm.message, tag: inlineEditForm.tag } : l));
+      setEditingLogId(null);
+    } catch (err) {
+      console.error('인라인 업데이트 실패:', err);
+      alert('업데이트에 실패했습니다.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -1131,9 +1160,96 @@ export default function DevlogView() {
                 {projectLogs.length === 0 ? (
                   <div className="py-10 text-center text-xs" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>아직 로그가 없습니다</div>
                 ) : projectLogs.map(log => (
-                  <div key={log.id} className="p-4 rounded-lg border" style={{ backgroundColor: COLORS.bg2, borderColor: COLORS.border }}>
-                    <div className="text-[11px] mb-2 uppercase tracking-wider" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>{log.date}</div>
-                    <div className="text-[13px] leading-relaxed" style={{ color: COLORS.textMid }}>{log.message}</div>
+                  <div key={log.id} className="p-4 rounded-lg border group/item" style={{ backgroundColor: COLORS.bg2, borderColor: COLORS.border }}>
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="text-[11px] uppercase tracking-wider" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>{log.date}</div>
+                      {isAdmin && editingLogId !== log.id && (
+                        <div className="flex items-center gap-2 opacity-0 group-hover/item:opacity-100 transition-opacity">
+                          <button 
+                            onClick={() => startInlineEdit(log)}
+                            className="text-[#4a6080] hover:text-[#00d4ff] transition-colors"
+                          >
+                            <Edit2 size={12} />
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteLog(log.id)}
+                            className="text-[#4a6080] hover:text-[#ff4466] transition-colors"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {editingLogId === log.id ? (
+                      <div className="space-y-3">
+                        <div className="space-y-1">
+                          <div className="text-[9px] uppercase tracking-widest" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>Tag</div>
+                          <select 
+                            className="w-full p-2 rounded text-xs" 
+                            style={{ backgroundColor: '#0b1525', borderColor: '#1a3060', color: COLORS.text }}
+                            value={inlineEditForm.tag} 
+                            onChange={e => setInlineEditForm({...inlineEditForm, tag: e.target.value})}
+                          >
+                            <option value="기능추가">기능추가</option>
+                            <option value="버그수정">버그수정</option>
+                            <option value="배포">배포</option>
+                            <option value="기획">기획</option>
+                            <option value="기타">기타</option>
+                          </select>
+                        </div>
+                        <div className="space-y-1">
+                          <div className="text-[9px] uppercase tracking-widest" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>Message</div>
+                          <textarea 
+                            className="w-full p-2 rounded text-xs h-20" 
+                            style={{ backgroundColor: '#0b1525', borderColor: '#1a3060', color: COLORS.text }}
+                            value={inlineEditForm.message} 
+                            onChange={e => setInlineEditForm({...inlineEditForm, message: e.target.value})}
+                          />
+                        </div>
+                        <div className="flex gap-2 justify-end">
+                          <button 
+                            onClick={() => setEditingLogId(null)}
+                            className="px-3 py-1.5 rounded text-[10px] font-bold border border-[#1a3060]"
+                            style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}
+                          >
+                            CANCEL
+                          </button>
+                          <button 
+                            disabled={isSaving}
+                            onClick={() => handleInlineUpdate(log.id)}
+                            className="px-4 py-1.5 rounded text-[10px] font-bold"
+                            style={{ backgroundColor: COLORS.cyan, color: '#000', fontFamily: FONTS.mono }}
+                          >
+                            {isSaving ? 'SAVING...' : 'SAVE'}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-1.5">
+                        {log.tag && (
+                          <div className="flex">
+                            <span 
+                              className="text-[9px] px-1.5 py-0.5 rounded border" 
+                              style={{ 
+                                fontFamily: FONTS.mono,
+                                color: log.tag === '기능추가' ? '#00d4ff' : 
+                                       log.tag === '버그수정' ? '#ff4466' : 
+                                       log.tag === '배포' ? '#00ff88' : 
+                                       log.tag === '기획' ? '#ffb300' : '#4a6080',
+                                borderColor: log.tag === '기능추가' ? '#00d4ff44' : 
+                                            log.tag === '버그수정' ? '#ff446644' : 
+                                            log.tag === '배포' ? '#00ff8844' : 
+                                            log.tag === '기획' ? '#ffb30044' : '#4a608044'
+                              }}
+                            >
+                              {log.tag}
+                            </span>
+                          </div>
+                        )}
+                        <div className="text-[13px] leading-relaxed" style={{ color: COLORS.textMid }}>{log.message || log.msg}</div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
