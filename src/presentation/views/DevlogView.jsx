@@ -103,10 +103,16 @@ export default function DevlogView() {
           nextAction: data.nextAction || null,
           progress: data.progress || 0,
           date: data.startedAt?.toDate ? data.startedAt.toDate().toLocaleDateString() : (data.date || ''),
+          startedAt: data.startedAt,
+          createdAt: data.createdAt,
           action: status === 'IDEA' ? 'VIEW PLAN →' : 'VIEW LOG →',
           statusClass: `s-${status.toLowerCase()}`,
           badgeStyle: badgeStyle
         };
+      }).sort((a, b) => {
+        const timeA = a.createdAt?.seconds || a.startedAt?.seconds || 0;
+        const timeB = b.createdAt?.seconds || b.startedAt?.seconds || 0;
+        return timeB - timeA;
       });
       setProjects(projectsData);
       setLoading(false);
@@ -134,6 +140,10 @@ export default function DevlogView() {
           loggedAt: data.loggedAt,
           color: color
         };
+      }).sort((a, b) => {
+        const aTime = a.loggedAt?.seconds || a.loggedAt?.toMillis?.() / 1000 || 0;
+        const bTime = b.loggedAt?.seconds || b.loggedAt?.toMillis?.() / 1000 || 0;
+        return bTime - aTime;  // 최신순 (내림차순)
       });
       setLogs(logsData.slice(0, 10)); // 최대 10개만 표시
     });

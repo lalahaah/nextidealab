@@ -248,18 +248,16 @@ src/
 
 ## 8. 구현 로그
 
-### 2026-04-28: 전체 Devlog 대시보드 구현 완료
-- Firestore 실시간 연동, Admin Auth (숨겨진 ADMIN 버튼)
-- 프로젝트 카드 + 진행률 + Next Action + GitHub/배포 링크
-- ADD/EDIT PROJECT, ADD/EDIT/DELETE LOG
-- 프로젝트 카드 삭제 기능 추가 (isAdmin 전용)
-- VIEW LOG 모달 (프로젝트별 로그 + 인라인 수정/삭제)
-- 수익 히스토리 SVG 라인 차트, 목표 MRR/달성률
-- 빌드 로그 태그 분류 (기능추가/버그수정/배포/기획/기타)
-- 아이디어 보관함 (IDEA VAULT)
-- 공개/비공개 구분 완성 (isAdmin 기반)
-- 랜딩페이지 Firebase DB 연동 수정 (하드코딩 제거)
-- 전체 사이트 텍스트 사이즈 개선
+### 2026-05-02: Devlog 타임라인 정렬 수정
+- DevlogView.jsx 내 RECENT BUILD LOG 타임라인이 최신순(내림차순)으로 정렬되도록 수정 완료
+- loggedAt 필드의 초/밀리초 단위를 모두 고려한 정렬 로직 적용
+- 프로젝트 및 인사이트 정렬 로직 점검
+
+오늘 작업 완료. devlog에 로그 남겨줘.
+프로젝트: nextidealab.app
+메시지: Devlog 빌드 로그 타임라인 최신순 정렬 수정
+상태: building
+태그: 버그수정
 
 ---
 
