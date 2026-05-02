@@ -32,6 +32,7 @@
 | IDEA VAULT | 🔒 Admin | 미공개 아이디어 보호 |
 | MRR 달성률 | 🔒 Admin | 수익 노출 위험 |
 | ADD/EDIT/DELETE 기능 | 🔒 Admin | |
+| 정렬 수익순 옵션 | 🔒 Admin | |
 
 ---
 
@@ -82,6 +83,13 @@ PAUSED   → border: #4a6080, color: #4a6080
 배포     → color: #00ff88, border: #00ff8844
 기획     → color: #ffb300, border: #ffb30044
 기타     → color: #4a6080, border: #4a608044
+
+/* 상태 필터 버튼 활성 색상 */
+LIVE     → bg: #00ff8822, border: #00ff88, color: #00ff88
+BUILDING → bg: #ffb30022, border: #ffb300, color: #ffb300
+IDEA     → bg: #4488ff22, border: #4488ff, color: #4488ff
+PAUSED   → bg: #4a608022, border: #4a6080, color: #4a6080
+ALL      → bg: #00d4ff,   border: #00d4ff, color: #000
 ```
 
 ---
@@ -195,13 +203,18 @@ service cloud.firestore {
 | GitHub / 배포 URL 링크 | ✅ 공개 |
 | 빌드 로그 타임라인 | ✅ 공개 |
 | 로그 태그 뱃지 (기능추가/버그수정/배포/기획/기타) | ✅ 공개 |
-| 스택 필터 / 상태 필터 | ✅ 공개 |
+| 스택 필터 | ✅ 공개 |
+| 상태 필터 버튼 (ALL/LIVE/BUILDING/IDEA/PAUSED) | ✅ 공개 |
+| 정렬 드롭다운 (최신/오래된/이름/진행률/상태순) | ✅ 공개 |
+| 정렬 드롭다운 (수익순) | 🔒 Admin |
 | BUILD ACTIVITY 캘린더 | ✅ 공개 |
 | STACK USAGE 바 | ✅ 공개 |
 | VIEW LOG 모달 (프로젝트별 로그) | ✅ 공개 |
+| RECENT BUILD LOG 최신순 정렬 | ✅ 공개 |
 | Admin Firebase Auth 로그인 (숨겨진 ADMIN 버튼) | - |
 | ADD PROJECT 모달 | 🔒 Admin |
 | EDIT PROJECT 모달 | 🔒 Admin |
+| DELETE PROJECT | 🔒 Admin |
 | ADD LOG 모달 | 🔒 Admin |
 | 타임라인 로그 수정 / 삭제 | 🔒 Admin |
 | VIEW LOG 내 로그 수정 / 삭제 | 🔒 Admin |
@@ -243,24 +256,27 @@ src/
 - ❌ Admin 전용 데이터를 비로그인 상태에서 노출
 - ❌ .env, .env.local 파일 Git 커밋에 포함
 - ❌ vercel --prod 직접 실행 (GitHub 푸시로 자동 배포)
+- ❌ 정렬/필터에 Firestore 추가 쿼리 사용 (클라이언트 사이드 처리)
 
 ---
 
 ## 8. 구현 로그
 
-### 2026-05-02: Devlog 기능 고도화
-- DevlogView.jsx 내 RECENT BUILD LOG 타임라인 최신순 정렬 수정
-- 프로젝트 카드 정렬 기능 추가 (최신순, 오래된순, 이름순, 진행률순, 상태순, 수익순)
-- 상태(Status) 필터 버튼 행 추가 (ALL, LIVE, BUILDING, IDEA, PAUSED)
-- 카테고리(Stack) 칩 행 + 정렬 드롭다운 + 검색창 통합 UI 구현
-- 모든 필터와 정렬은 클라이언트 사이드에서 복합적으로 동작하도록 로직 고도화
-- 디자인 시스템 가이드 준수 (Space Mono, 11px, 상태별 전용 컬러 하이라이트)
-
-오늘 작업 완료. devlog에 로그 남겨줘.
-프로젝트: nextidealab.app
-메시지: Devlog 복합 필터(상태/카테고리/검색) 및 정렬 기능 고도화
-상태: building
-태그: 기능추가
+### 2026-04-28: 전체 Devlog 대시보드 구현 완료
+- Firestore 실시간 연동, Admin Auth (숨겨진 ADMIN 버튼)
+- 프로젝트 카드 + 진행률 + Next Action + GitHub/배포 링크
+- ADD/EDIT/DELETE PROJECT
+- ADD/EDIT/DELETE LOG (타임라인 + VIEW LOG 모달 내)
+- VIEW LOG 모달 (프로젝트별 로그 + 인라인 수정/삭제)
+- 수익 히스토리 SVG 라인 차트, 목표 MRR/달성률
+- 빌드 로그 태그 분류 (기능추가/버그수정/배포/기획/기타)
+- 아이디어 보관함 (IDEA VAULT)
+- RECENT BUILD LOG 최신순 정렬 (loggedAt 기준)
+- 프로젝트 카드 정렬 드롭다운 (최신/오래된/이름/진행률/상태/수익순)
+- 상태 필터 버튼 (ALL/LIVE/BUILDING/IDEA/PAUSED)
+- 공개/비공개 구분 완성 (isAdmin 기반)
+- 랜딩페이지 Firebase DB 연동 수정 (하드코딩 제거)
+- 전체 사이트 텍스트 사이즈 개선
 
 ---
 
@@ -300,4 +316,4 @@ src/
 
 ---
 
-*Last updated: 2026-04-28 | Architect: Claude (claude.ai) | Builder: Gemini CLI*
+*Last updated: 2026-05-02 | Architect: Claude (claude.ai) | Builder: Gemini CLI*
