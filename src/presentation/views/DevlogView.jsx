@@ -11,6 +11,8 @@ export default function DevlogView() {
   const [projectLogs, setProjectLogs] = useState([]); // 특정 프로젝트용 로그
   const [loading, setLoading] = useState(true);
   const [activeStackFilter, setActiveStackFilter] = useState(null);
+  const [activeStatusFilter, setActiveStatusFilter] = useState('ALL'); // 상태 필터 추가
+  const [searchTerm, setSearchTerm] = useState(''); // 검색어 상태 추가
   const [sortBy, setSortBy] = useState('latest'); // 정렬 상태 추가
 
   // Auth & Admin State
@@ -492,10 +494,29 @@ export default function DevlogView() {
   }
 
   const sortedAndFilteredProjects = useMemo(() => {
-    let result = activeStackFilter
-      ? projects.filter(p => p.stack.includes(activeStackFilter))
-      : [...projects];
+    let result = [...projects];
 
+    // 1. Stack 필터 (카테고리)
+    if (activeStackFilter) {
+      result = result.filter(p => p.stack.includes(activeStackFilter));
+    }
+
+    // 2. Status 필터
+    if (activeStatusFilter !== 'ALL') {
+      result = result.filter(p => p.status === activeStatusFilter);
+    }
+
+    // 3. Search 필터
+    if (searchTerm) {
+      const q = searchTerm.toLowerCase();
+      result = result.filter(p => 
+        p.name.toLowerCase().includes(q) || 
+        p.desc.toLowerCase().includes(q) ||
+        p.stack.some(s => s.toLowerCase().includes(q))
+      );
+    }
+
+    // 4. 정렬 (Sort)
     result.sort((a, b) => {
       if (sortBy === 'latest') {
         const timeA = a.createdAt?.seconds || a.startedAt?.seconds || 0;
@@ -524,7 +545,7 @@ export default function DevlogView() {
     });
     
     return result;
-  }, [projects, activeStackFilter, sortBy, isAdmin]);
+  }, [projects, activeStackFilter, activeStatusFilter, searchTerm, sortBy, isAdmin]);
 
   return (
     <div className="min-h-screen pt-[56px]" style={{ backgroundColor: COLORS.bg, color: COLORS.text, fontFamily: FONTS.grotesk }}>
@@ -658,31 +679,115 @@ export default function DevlogView() {
             ))}
           </div>
 
-          {/* Project Cards Header & Sort */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+          {/* Project Repository Header */}
+          <div className="flex items-center justify-between mb-6">
             <div className="text-[12px] uppercase tracking-[2px]" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>Project Repository</div>
-            <div className="flex items-center gap-3">
-              <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>SORT ↕</span>
-              <select 
-                value={sortBy} 
-                onChange={(e) => setSortBy(e.target.value)}
-                className="appearance-none px-4 py-2 rounded-lg text-[11px] cursor-pointer transition-all hover:border-[#1a3060]"
+            <div className="text-[10px] text-slate-500 font-mono font-bold tracking-widest">{sortedAndFilteredProjects.length} RECORDS FOUND</div>
+          </div>
+
+          {/* Filter Row 1: Categories + Sort + Search */}
+          <div className="flex flex-col xl:flex-row gap-4 mb-4">
+            <div className="flex-1 flex flex-wrap gap-2">
+              <button 
+                onClick={() => setActiveStackFilter(null)}
+                className="px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all border"
                 style={{ 
-                  backgroundColor: '#0d1a2d', 
-                  border: '1px solid #112240', 
-                  color: '#7a9ab8', 
                   fontFamily: FONTS.mono,
-                  minWidth: '120px'
+                  backgroundColor: !activeStackFilter ? COLORS.cyan : 'transparent',
+                  borderColor: !activeStackFilter ? COLORS.cyan : COLORS.border,
+                  color: !activeStackFilter ? '#000' : COLORS.textDim
                 }}
               >
-                <option value="latest">최신순</option>
-                <option value="oldest">오래된순</option>
-                <option value="name">이름순</option>
-                <option value="progress">진행률순</option>
-                <option value="status">상태순</option>
-                {isAdmin && <option value="revenue">수익순</option>}
-              </select>
+                ALL
+              </button>
+              {Array.from(new Set(projects.flatMap(p => p.stack))).slice(0, 10).map(tag => (
+                <button
+                  key={tag}
+                  onClick={() => setActiveStackFilter(tag === activeStackFilter ? null : tag)}
+                  className="px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all border"
+                  style={{ 
+                    fontFamily: FONTS.mono,
+                    backgroundColor: activeStackFilter === tag ? COLORS.cyanDim : 'transparent',
+                    borderColor: activeStackFilter === tag ? COLORS.cyan : COLORS.border,
+                    color: activeStackFilter === tag ? COLORS.cyan : COLORS.textDim
+                  }}
+                >
+                  {tag.toUpperCase()}
+                </button>
+              ))}
             </div>
+
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 bg-[#0d1a2d] border border-[#112240] px-3 py-1.5 rounded-lg hover:border-[#1a3060] transition-all">
+                <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>SORT ↕</span>
+                <select 
+                  value={sortBy} 
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="bg-transparent border-0 text-[11px] text-[#7a9ab8] outline-none cursor-pointer font-bold"
+                  style={{ fontFamily: FONTS.mono }}
+                >
+                  <option value="latest">최신순</option>
+                  <option value="oldest">오래된순</option>
+                  <option value="name">이름순</option>
+                  <option value="progress">진행률순</option>
+                  <option value="status">상태순</option>
+                  {isAdmin && <option value="revenue">수익순</option>}
+                </select>
+              </div>
+              <div className="relative">
+                <input 
+                  type="text" 
+                  placeholder="SEARCH..." 
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="bg-[#0d1a2d] border border-[#112240] px-3 py-1.5 rounded-lg text-[11px] text-[#e8f4ff] font-bold focus:border-[#00d4ff] transition-all w-[140px]"
+                  style={{ fontFamily: FONTS.mono }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Filter Row 2: Status Buttons */}
+          <div className="flex flex-wrap gap-2 mb-8 border-t border-b border-[#112240] py-4">
+            {[
+              { label: 'ALL', id: 'ALL', color: COLORS.cyan, bg: COLORS.cyan, activeColor: '#000' },
+              { label: '🟢 LIVE', id: 'LIVE', color: COLORS.green, bg: COLORS.green + '22' },
+              { label: '🟡 BUILDING', id: 'BUILDING', color: COLORS.amber, bg: COLORS.amber + '22' },
+              { label: '🔵 IDEA', id: 'IDEA', color: COLORS.blue, bg: COLORS.blue + '22' },
+              { label: '⚫ PAUSED', id: 'PAUSED', color: '#4a6080', bg: '#4a608022' },
+            ].map(btn => {
+              const isActive = activeStatusFilter === btn.id;
+              let style = {
+                fontFamily: FONTS.mono,
+                fontSize: '11px',
+                borderColor: COLORS.border,
+                color: '#4a6080',
+                backgroundColor: 'transparent'
+              };
+
+              if (isActive) {
+                if (btn.id === 'ALL') {
+                  style.backgroundColor = btn.bg;
+                  style.borderColor = btn.color;
+                  style.color = btn.activeColor;
+                } else {
+                  style.backgroundColor = btn.bg;
+                  style.borderColor = btn.color;
+                  style.color = btn.color;
+                }
+              }
+
+              return (
+                <button
+                  key={btn.id}
+                  onClick={() => setActiveStatusFilter(btn.id === activeStatusFilter ? 'ALL' : btn.id)}
+                  className="px-4 py-2 rounded-lg font-bold transition-all border"
+                  style={style}
+                >
+                  {btn.label}
+                </button>
+              );
+            })}
           </div>
 
           {/* Project Cards */}
