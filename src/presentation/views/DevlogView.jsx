@@ -11,6 +11,7 @@ export default function DevlogView() {
   const [projectLogs, setProjectLogs] = useState([]); // 특정 프로젝트용 로그
   const [loading, setLoading] = useState(true);
   const [activeStackFilter, setActiveStackFilter] = useState(null);
+  const [sortBy, setSortBy] = useState('latest'); // 정렬 상태 추가
 
   // Auth & Admin State
   const [isAdmin, setIsAdmin] = useState(false);
@@ -490,9 +491,40 @@ export default function DevlogView() {
     return `₩${amount}`;
   }
 
-  const filteredProjects = activeStackFilter
-    ? projects.filter(p => p.stack.includes(activeStackFilter))
-    : projects;
+  const sortedAndFilteredProjects = useMemo(() => {
+    let result = activeStackFilter
+      ? projects.filter(p => p.stack.includes(activeStackFilter))
+      : [...projects];
+
+    result.sort((a, b) => {
+      if (sortBy === 'latest') {
+        const timeA = a.createdAt?.seconds || a.startedAt?.seconds || 0;
+        const timeB = b.createdAt?.seconds || b.startedAt?.seconds || 0;
+        return timeB - timeA;
+      }
+      if (sortBy === 'oldest') {
+        const timeA = a.createdAt?.seconds || a.startedAt?.seconds || 0;
+        const timeB = b.createdAt?.seconds || b.startedAt?.seconds || 0;
+        return timeA - timeB;
+      }
+      if (sortBy === 'name') {
+        return a.name.localeCompare(b.name);
+      }
+      if (sortBy === 'progress') {
+        return b.progress - a.progress;
+      }
+      if (sortBy === 'status') {
+        const statusOrder = { 'LIVE': 0, 'BUILDING': 1, 'IDEA': 2, 'PAUSED': 3 };
+        return (statusOrder[a.status] ?? 99) - (statusOrder[b.status] ?? 99);
+      }
+      if (sortBy === 'revenue' && isAdmin) {
+        return (b.revenue || 0) - (a.revenue || 0);
+      }
+      return 0;
+    });
+    
+    return result;
+  }, [projects, activeStackFilter, sortBy, isAdmin]);
 
   return (
     <div className="min-h-screen pt-[56px]" style={{ backgroundColor: COLORS.bg, color: COLORS.text, fontFamily: FONTS.grotesk }}>
@@ -626,13 +658,40 @@ export default function DevlogView() {
             ))}
           </div>
 
+          {/* Project Cards Header & Sort */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+            <div className="text-[12px] uppercase tracking-[2px]" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>Project Repository</div>
+            <div className="flex items-center gap-3">
+              <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>SORT ↕</span>
+              <select 
+                value={sortBy} 
+                onChange={(e) => setSortBy(e.target.value)}
+                className="appearance-none px-4 py-2 rounded-lg text-[11px] cursor-pointer transition-all hover:border-[#1a3060]"
+                style={{ 
+                  backgroundColor: '#0d1a2d', 
+                  border: '1px solid #112240', 
+                  color: '#7a9ab8', 
+                  fontFamily: FONTS.mono,
+                  minWidth: '120px'
+                }}
+              >
+                <option value="latest">최신순</option>
+                <option value="oldest">오래된순</option>
+                <option value="name">이름순</option>
+                <option value="progress">진행률순</option>
+                <option value="status">상태순</option>
+                {isAdmin && <option value="revenue">수익순</option>}
+              </select>
+            </div>
+          </div>
+
           {/* Project Cards */}
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-3.5 mb-10">
             {loading ? (
               <div className="col-span-full py-20 text-center text-sm" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>Loading...</div>
-            ) : filteredProjects.length === 0 ? (
+            ) : sortedAndFilteredProjects.length === 0 ? (
               <div className="col-span-full py-20 text-center text-sm" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>아직 프로젝트가 없습니다</div>
-            ) : filteredProjects.map(p => {
+            ) : sortedAndFilteredProjects.map(p => {
               const mrrRate = p.targetMRR > 0 ? Math.round((p.revenue / p.targetMRR) * 100) : null;
               let mrrColor = COLORS.textDim;
               if (mrrRate >= 100) mrrColor = COLORS.green;
