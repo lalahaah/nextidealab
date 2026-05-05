@@ -15,7 +15,7 @@ export const SEO = ({ title, description, image, url, type = 'website' }) => {
     const fullTitle = title ? `${title} | ${siteTitle}` : siteTitle;
     const defaultDescription = 'Future-focused AI & Web Development Lab. We archive innovation and record the process of creation.';
     const metaDescription = description || defaultDescription;
-    const siteUrl = 'https://nextidealab.com'; // 실제 도메인으로 변경 필요
+    const siteUrl = 'https://nextidealab.app'; // 실제 도메인으로 변경 완료
     const fullUrl = url ? `${siteUrl}/${url}` : siteUrl;
     const defaultImage = `${siteUrl}/default-og.png`; // 기본 OG 이미지 경로
     const metaImage = image || defaultImage;
