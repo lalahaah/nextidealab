@@ -7,15 +7,12 @@ import { Github, ExternalLink, Edit2 } from 'lucide-react';
 const formatLogDate = (timestamp) => {
   if (!timestamp) return '날짜 없음';
   const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp.seconds * 1000);
-  return date.toLocaleString('ko-KR', {
+  return date.toLocaleDateString('ko-KR', {
     timeZone: 'Asia/Seoul',
     year: 'numeric',
     month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false
-  }).replace(/\. /g, '.').replace(',', '');
+    day: '2-digit'
+  }).replace(/\. /g, '.');
 };
 
 export default function DevlogView() {

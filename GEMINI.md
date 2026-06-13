@@ -264,7 +264,7 @@ src/
 ## 8. 구현 로그
 
 ### 2026-06-13: 빌드 로그 날짜 표시 방식 수정
-- RECENT BUILD LOG 타임라인 및 VIEW LOG 모달의 빌드 로그 날짜를 KST 실제 날짜/시간 포맷으로 변경
+- RECENT BUILD LOG 타임라인 및 VIEW LOG 모달의 빌드 로그 날짜를 KST 실제 날짜 포맷으로 변경
 
 ### 2026-04-28: 전체 Devlog 대시보드 구현 완료
 - Firestore 실시간 연동, Admin Auth (숨겨진 ADMIN 버튼)
