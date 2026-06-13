@@ -4,6 +4,20 @@ import { collection, onSnapshot, addDoc, serverTimestamp, updateDoc, doc, query,
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { Github, ExternalLink, Edit2 } from 'lucide-react';
 
+const formatLogDate = (timestamp) => {
+  if (!timestamp) return '날짜 없음';
+  const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp.seconds * 1000);
+  return date.toLocaleString('ko-KR', {
+    timeZone: 'Asia/Seoul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  }).replace(/\. /g, '.').replace(',', '');
+};
+
 export default function DevlogView() {
   const [projects, setProjects] = useState([]);
   const [logs, setLogs] = useState([]);
@@ -139,7 +153,7 @@ export default function DevlogView() {
           msg: data.message || data.msg || '',
           tag: data.tag || null,
           status: status,
-          date: data.loggedAt?.toDate ? formatTimeAgo(data.loggedAt.toDate()) : 'RECENT',
+          date: formatLogDate(data.loggedAt),
           loggedAt: data.loggedAt,
           color: color
         };
@@ -426,7 +440,7 @@ export default function DevlogView() {
           acc.push({
             id: doc.id,
             ...data,
-            date: data.loggedAt?.toDate ? data.loggedAt.toDate().toLocaleDateString() : 'RECENT'
+            date: formatLogDate(data.loggedAt)
           });
         }
         return acc;
