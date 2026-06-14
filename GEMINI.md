@@ -211,6 +211,7 @@ service cloud.firestore {
 | STACK USAGE 바 | ✅ 공개 |
 | VIEW LOG 모달 (프로젝트별 로그) | ✅ 공개 |
 | RECENT BUILD LOG 최신순 정렬 | ✅ 공개 |
+| RECENT BUILD LOG 정렬 및 필터 컨트롤 (날짜/프로젝트/태그) | ✅ 공개 |
 | Admin Firebase Auth 로그인 (숨겨진 ADMIN 버튼) | - |
 | ADD PROJECT 모달 | 🔒 Admin |
 | EDIT PROJECT 모달 | 🔒 Admin |
@@ -262,6 +263,9 @@ src/
 ---
 
 ## 8. 구현 로그
+
+### 2026-06-14: 최근 빌드 로그 정렬 및 필터 컨트롤 추가
+- RECENT BUILD LOG 섹션 우측 상단에 날짜 정렬(최신/오래된순), 프로젝트 필터, 태그 필터 컨트롤 추가 및 클라이언트 사이드 필터링 구현
 
 ### 2026-06-13: 빌드 로그 날짜 표시 방식 수정
 - RECENT BUILD LOG 타임라인 및 VIEW LOG 모달의 빌드 로그 날짜를 KST 실제 날짜 포맷으로 변경

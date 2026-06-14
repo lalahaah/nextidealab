@@ -25,6 +25,10 @@ export default function DevlogView() {
   const [activeStatusFilter, setActiveStatusFilter] = useState('ALL'); // 상태 필터 추가
   const [searchTerm, setSearchTerm] = useState(''); // 검색어 상태 추가
   const [sortBy, setSortBy] = useState('latest'); // 정렬 상태 추가
+  const [logSortOrder, setLogSortOrder] = useState('latest');
+  const [logProjectFilter, setLogProjectFilter] = useState('all');
+  const [logTagFilter, setLogTagFilter] = useState('all');
+  const [viewAllLogs, setViewAllLogs] = useState(false);
 
   // Auth & Admin State
   const [isAdmin, setIsAdmin] = useState(false);
@@ -159,7 +163,7 @@ export default function DevlogView() {
         const bTime = b.loggedAt?.seconds || b.loggedAt?.toMillis?.() / 1000 || 0;
         return bTime - aTime;  // 최신순 (내림차순)
       });
-      setLogs(logsData.slice(0, 10)); // 최대 10개만 표시
+      setLogs(logsData); // 전체 로그 저장 (클라이언트 사이드 필터링을 위해)
     });
 
     // Ideas Real-time Sync (Admin Only)
@@ -558,6 +562,41 @@ export default function DevlogView() {
     return result;
   }, [projects, activeStackFilter, activeStatusFilter, searchTerm, sortBy, isAdmin]);
 
+  const sortedAndFilteredLogs = useMemo(() => {
+    let result = [...logs];
+
+    // 1. 프로젝트 필터
+    if (logProjectFilter !== 'all') {
+      result = result.filter(log => {
+        const targetProj = projects.find(p => p.id === logProjectFilter);
+        if (!targetProj) return false;
+        return log.projectId === targetProj.id || log.project === targetProj.name;
+      });
+    }
+
+    // 2. 태그 필터
+    if (logTagFilter !== 'all') {
+      result = result.filter(log => log.tag === logTagFilter);
+    }
+
+    // 3. 날짜 정렬
+    result.sort((a, b) => {
+      const aTime = a.loggedAt?.seconds || a.loggedAt?.toMillis?.() / 1000 || 0;
+      const bTime = b.loggedAt?.seconds || b.loggedAt?.toMillis?.() / 1000 || 0;
+      if (logSortOrder === 'latest') {
+        return bTime - aTime;
+      } else {
+        return aTime - bTime;
+      }
+    });
+
+    return result;
+  }, [logs, logProjectFilter, logTagFilter, logSortOrder, projects]);
+
+  const displayedLogs = useMemo(() => {
+    return viewAllLogs ? sortedAndFilteredLogs : sortedAndFilteredLogs.slice(0, 10);
+  }, [sortedAndFilteredLogs, viewAllLogs]);
+
   return (
     <div className="min-h-screen pt-[56px]" style={{ backgroundColor: COLORS.bg, color: COLORS.text, fontFamily: FONTS.grotesk }}>
       <style>{`
@@ -572,6 +611,9 @@ export default function DevlogView() {
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #112240; border-radius: 10px; }
+        .log-filter-select { background: #0d1a2d !important; border: 1px solid #112240 !important; color: #7a9ab8 !important; font-family: 'Space Mono', monospace !important; font-size: 11px !important; border-radius: 4px !important; padding: 4px 10px !important; outline: none !important; transition: border-color 0.2s; cursor: pointer; }
+        .log-filter-select:hover { border-color: #1a3060 !important; }
+        .log-filter-select:focus { border-color: #00d4ff !important; }
       `}</style>
 
       <div className="flex min-h-[calc(100vh-56px)]">
@@ -907,13 +949,62 @@ export default function DevlogView() {
 
           {/* Timeline */}
           <div className="mb-10">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
               <span className="text-[12px] uppercase tracking-[2px]" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>Recent Build Log</span>
+              
+              <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
+                {/* 1. 날짜 정렬 드롭다운 */}
+                <select
+                  value={logSortOrder}
+                  onChange={(e) => setLogSortOrder(e.target.value)}
+                  className="log-filter-select"
+                >
+                  <option value="latest">최신순</option>
+                  <option value="oldest">오래된순</option>
+                </select>
+
+                {/* 2. 프로젝트 필터 드롭다운 */}
+                <select
+                  value={logProjectFilter}
+                  onChange={(e) => setLogProjectFilter(e.target.value)}
+                  className="log-filter-select"
+                >
+                  <option value="all">전체 프로젝트</option>
+                  {projects.map(p => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+
+                {/* 3. 태그 필터 드롭다운 */}
+                <select
+                  value={logTagFilter}
+                  onChange={(e) => setLogTagFilter(e.target.value)}
+                  className="log-filter-select"
+                >
+                  <option value="all">전체</option>
+                  <option value="기능추가">기능추가</option>
+                  <option value="버그수정">버그수정</option>
+                  <option value="배포">배포</option>
+                  <option value="기획">기획</option>
+                  <option value="기타">기타</option>
+                </select>
+              </div>
+
+              <button 
+                onClick={() => setViewAllLogs(prev => !prev)}
+                className="text-[11px] font-bold hover:opacity-80 transition-all shrink-0" 
+                style={{ color: COLORS.cyan, fontFamily: FONTS.mono }}
+              >
+                {viewAllLogs ? 'Hide ←' : 'View all →'}
+              </button>
             </div>
+            
             <div className="relative pl-6 space-y-2.5 before:content-[''] before:absolute before:left-[7px] before:top-2 before:bottom-0 before:w-[1px] before:bg-gradient-to-b before:from-[#00d4ff44] before:to-transparent">
-              {logs.length === 0 ? (
-                <div className="text-xs py-5" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>No logs found.</div>
-              ) : logs.map((log, i) => (
+              {displayedLogs.length === 0 ? (
+                <div className="text-xs py-5" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>
+                  해당하는 로그가 없습니다
+                </div>
+              ) : displayedLogs.map((log, i) => (
                 <div key={i} className="relative">
                   <div className="absolute -left-[19px] top-3.5 w-2 h-2 rounded-full border-2" style={{ backgroundColor: log.color, borderColor: COLORS.bg }}></div>
                   <div className="flex items-center justify-between p-3 rounded-lg border transition-all hover:border-[#1a3060]" style={{ backgroundColor: COLORS.card, borderColor: COLORS.border }}>
@@ -960,8 +1051,7 @@ export default function DevlogView() {
                       )}
                       <span className="text-[11px] uppercase" style={{ color: COLORS.textDim, fontFamily: FONTS.mono }}>{log.date}</span>
                     </div>
-                    </div>
-
+                  </div>
                 </div>
               ))}
             </div>
