@@ -264,6 +264,9 @@ src/
 
 ## 8. 구현 로그
 
+### 2026-07-26: 랜딩페이지 Projects 및 Insights 정렬 문제 개선
+- Firestore 누락 필드 대응을 위해 useDataHooks.js에서 createdAt, updatedAt, date 필드를 모두 고려한 안전한 클라이언트 사이드 정렬 로직 구현 (Firestore의 orderBy 대신 사용)
+
 ### 2026-06-14: 최근 빌드 로그 정렬 및 필터 컨트롤 추가
 - RECENT BUILD LOG 섹션 우측 상단에 날짜 정렬(최신/오래된순), 프로젝트 필터, 태그 필터 컨트롤 추가 및 클라이언트 사이드 필터링 구현
 
