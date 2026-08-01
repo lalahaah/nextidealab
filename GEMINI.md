@@ -264,6 +264,10 @@ src/
 
 ## 8. 구현 로그
 
+### 2026-08-01: SPA 404 에러 해결 및 sitemap.xml 추가
+- vercel.json에 rewrites 룰을 추가하여 새로고침/직접접근 시 SPA 라우팅(404) 문제 해결
+- public 폴더에 SEO 향상을 위한 sitemap.xml 생성
+
 ### 2026-07-26: 랜딩페이지 Projects 및 Insights 정렬 문제 개선
 - Firestore 누락 필드 대응을 위해 useDataHooks.js에서 createdAt, updatedAt, date 필드를 모두 고려한 안전한 클라이언트 사이드 정렬 로직 구현 (Firestore의 orderBy 대신 사용)
 
